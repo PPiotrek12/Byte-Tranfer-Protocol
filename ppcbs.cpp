@@ -22,22 +22,21 @@
 using namespace std;
 
 void send_CONACC(int socket_fd, struct sockaddr_in client_address, uint64_t ses_id) {
-    static char message[9]; // (8+64) / 8 = 1 + 8 = 9
+    static char message[9];
     message[0] = CONACC;
     memcpy(message + 1, &ses_id, 8);
-    socklen_t address_length = (socklen_t) sizeof(client_address);
     send_message(socket_fd, message, sizeof(message), client_address);
 }
 
 void send_CONRJT(int socket_fd, struct sockaddr_in client_address, uint64_t ses_id) {
-    static char message[9]; // (8+64) / 8 = 1 + 8 = 9
+    static char message[9];
     message[0] = CONRJT;
     memcpy(message + 1, &ses_id, 8);
     send_message(socket_fd, message, sizeof(message), client_address);
 }
 
 int receive_CONN(int socket_fd, struct sockaddr_in *client_address, uint8_t *type, uint64_t *ses_id, uint8_t *prot, uint64_t *seq_len) {
-    static char buffer[18]; // (8+64+8+64)/8 = 1+8+1+8 = 18
+    static char buffer[18];
     socklen_t address_length = (socklen_t) sizeof(client_address);
     ssize_t length = recvfrom(socket_fd, buffer, 18, 0, (struct sockaddr *) client_address, &address_length);
     if (length < 0)
@@ -65,7 +64,6 @@ void udp_server(struct sockaddr_in server_address) {
     while (true) {
         uint8_t prot, type;
         uint64_t seq_len, ses_id;
-        printf("XD");
         fflush(stdout);
 
         struct sockaddr_in client_address;
@@ -92,7 +90,6 @@ int main(int argc, char *argv[]) {
         prot = PROT_UDPR;
     else
         fatal("Invalid protocol");
-    printf("main");
     struct sockaddr_in server_address;
     server_address.sin_family = AF_INET; // IPv4
     server_address.sin_addr.s_addr = htonl(INADDR_ANY); // Listening on all interfaces.
