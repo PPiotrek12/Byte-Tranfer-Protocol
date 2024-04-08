@@ -26,13 +26,11 @@ using namespace std;
 
 
 void send_CONN(int socket_fd, struct sockaddr_in server_address, uint64_t ses_id, uint8_t prot, uint64_t seq_len) {
-    static char message[18];
-    
+    static char message[18]; // (8+64+8+64)/8 = 1+8+1+8 = 18
     message[0] = CONN;
     memcpy(message + 1, &ses_id, 8);
     message[9] = prot;
     memcpy(message + 10, &seq_len, 8);
-
     send_message(socket_fd, message, sizeof(message), server_address);
 }
 

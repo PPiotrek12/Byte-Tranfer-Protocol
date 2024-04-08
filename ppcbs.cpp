@@ -21,23 +21,36 @@
 
 using namespace std;
 
-
-
-int receive_CONN(int socket_fd, struct sockaddr_in *client_address, uint64_t *ses_id, uint8_t *prot, uint64_t *seq_len) {
-    static char buffer[18];
+void send_CONACC(int socket_fd, struct sockaddr_in client_address, uint64_t ses_id) {
+    static char message[9]; // (8+64) / 8 = 1 + 8 = 9
+    message[0] = CONACC;
+    memcpy(message + 1, &ses_id, 8);
     socklen_t address_length = (socklen_t) sizeof(client_address);
-    ssize_t length = recvfrom(socket_fd, buffer, 18, 0, (struct sockaddr *) &client_address, &address_length);
+    send_message(socket_fd, message, sizeof(message), client_address);
+}
+
+void send_CONRJT(int socket_fd, struct sockaddr_in client_address, uint64_t ses_id) {
+    static char message[9]; // (8+64) / 8 = 1 + 8 = 9
+    message[0] = CONRJT;
+    memcpy(message + 1, &ses_id, 8);
+    send_message(socket_fd, message, sizeof(message), client_address);
+}
+
+int receive_CONN(int socket_fd, struct sockaddr_in *client_address, uint8_t *type, uint64_t *ses_id, uint8_t *prot, uint64_t *seq_len) {
+    static char buffer[18]; // (8+64+8+64)/8 = 1+8+1+8 = 18
+    socklen_t address_length = (socklen_t) sizeof(client_address);
+    ssize_t length = recvfrom(socket_fd, buffer, 18, 0, (struct sockaddr *) client_address, &address_length);
     if (length < 0)
         return 1;
     // if (length != 18)
     //     return 1;
     
-    uint8_t type = buffer[0];
+    *type = buffer[0];
     memcpy(ses_id, buffer + 1, 8);
     *prot = buffer[9];
     memcpy(seq_len, buffer + 10, 8);
 
-    if (type != CONN)
+    if (*type != CONN)
         return 1;
     return 0;
 }
@@ -50,13 +63,17 @@ void udp_server(struct sockaddr_in server_address) {
         syserr("bind");
 
     while (true) {
+        uint8_t prot, type;
+        uint64_t seq_len, ses_id;
+        printf("XD");
+        fflush(stdout);
+
         struct sockaddr_in client_address;
-        uint64_t ses_id;
-        uint8_t prot;
-        uint64_t seq_len;
-        if (receive_CONN(socket_fd, &client_address, &ses_id, &prot, &seq_len))
+
+        if (receive_CONN(socket_fd, &client_address, &type, &ses_id, &prot, &seq_len))
             continue;
-        printf("ses_id: %ld\n", ses_id);
+    
+        send_CONACC(socket_fd, client_address, ses_id);
     }
 }
 
@@ -75,7 +92,7 @@ int main(int argc, char *argv[]) {
         prot = PROT_UDPR;
     else
         fatal("Invalid protocol");
-
+    printf("main");
     struct sockaddr_in server_address;
     server_address.sin_family = AF_INET; // IPv4
     server_address.sin_addr.s_addr = htonl(INADDR_ANY); // Listening on all interfaces.

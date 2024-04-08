@@ -18,10 +18,10 @@
 
 using namespace std;
 
-void send_message(int socket_fd, char *message, ssize_t message_length, struct sockaddr_in server_address) {
-    socklen_t address_length = (socklen_t) sizeof(server_address);
+void send_message(int socket_fd, char *message, ssize_t message_length, struct sockaddr_in address) {
+    socklen_t address_length = (socklen_t) sizeof(address);
     ssize_t sent_length = sendto(socket_fd, message, message_length, 0,
-                                  (struct sockaddr *) &server_address, address_length);
+                                  (struct sockaddr *) &address, address_length);
     if (sent_length != message_length) {
         syserr("sendto");
     }
