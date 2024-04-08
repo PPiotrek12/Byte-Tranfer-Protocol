@@ -1,21 +1,26 @@
 CC=g++
 CFLAGS=-c -Wall -Wextra -O3 -std=c++17
 
-all: ppcbs ppcbc
+all: ppcbs ppcbc ppcbs2
 
-ppcbs: ppcbs.o common.o err.o 
+ppcbs: ppcbs.o common.o  protconst.h err.o 
 	$(CC) $(LFLAGS) -o $@ $^
 
-ppcbc: ppcbc.o common.o err.o
+ppcbs2: ppcbs2.o common.o  protconst.h err.o 
+	$(CC) $(LFLAGS) -o $@ $^
+
+ppcbc: ppcbc.o common.o  protconst.h err.o
 	$(CC) $(LFLAGS) -o $@ $^
 
 ppcbs.o: ppcbs.cpp common.h err.h
+	$(CC) $(CFLAGS) -c -o $@ $<
+ppcbs2.o: ppcbs2.cpp common.h err.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 ppcbc.o: ppcbc.cpp common.h err.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-common.o: common.cpp common.h err.h
+common.o: common.cpp common.h err.h protconst.h
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 err.o: err.cpp err.h

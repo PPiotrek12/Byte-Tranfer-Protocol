@@ -1,4 +1,5 @@
 #include <sys/types.h>
+#include <iostream>
 #include <sys/socket.h>
 #include <errno.h>
 #include <inttypes.h>
@@ -13,6 +14,18 @@
 
 #include "err.h"
 #include "common.h"
+#include "protconst.h"
+
+using namespace std;
+
+void send_message(int socket_fd, char *message, ssize_t message_length, struct sockaddr_in server_address) {
+    socklen_t address_length = (socklen_t) sizeof(server_address);
+    ssize_t sent_length = sendto(socket_fd, message, message_length, 0,
+                                  (struct sockaddr *) &server_address, address_length);
+    if (sent_length != message_length) {
+        syserr("sendto");
+    }
+}
 
 uint16_t read_port(char const *string) {
     char *endptr;
