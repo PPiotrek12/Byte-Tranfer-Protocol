@@ -54,7 +54,26 @@ void send_CONN(int socket_fd, struct sockaddr_in server_address, uint64_t ses_id
     send_message(socket_fd, message, sizeof(message), server_address);
 }
 
-void udp_client(struct sockaddr_in server_address, uint64_t seq_len) {
+void send_DATA(int socket_fd, struct sockaddr_in server_address, uint64_t ses_id, char *data, uint64_t seq_len) {
+    uint32_t packet_size = 100; // TODO
+
+    uint64_t already_sent = 0;
+    uint64_t packet_nr = 0;
+    while (already_sent < seq_len) {
+        char message[packet_size + 21];
+        message[0] = DATA;
+        memcpy(message + 1, &ses_id, 8);
+        memcpy(message + 9, &packet_nr, 8);
+        uint32_t bytes_nr = min((uint64_t) packet_size, seq_len - already_sent);
+        memcpy(message + 17, &bytes_nr, 4);
+        mempcpy(message + 21, data, bytes_nr);
+        send_message(socket_fd, message, sizeof(message), server_address);
+        already_sent += bytes_nr;
+        packet_nr++;
+    }
+}
+
+void udp_client(struct sockaddr_in server_address, char *data, uint64_t seq_len) {
     int socket_fd = socket(PF_INET, SOCK_DGRAM, 0);
     if (socket_fd < 0) {
         syserr("socket");
@@ -75,7 +94,7 @@ void udp_client(struct sockaddr_in server_address, uint64_t seq_len) {
     if (type == CONRJT) 
         return;
 
-    
+    send_DATA(socket_fd, server_address, ses_id, data, seq_len);
 }
 
 int main(int argc, char *argv[]) {
@@ -109,5 +128,5 @@ int main(int argc, char *argv[]) {
 
     struct sockaddr_in server_address = get_server_address(host, port);
     if (prot == PROT_UDP)
-        udp_client(server_address, seq_len);
+        udp_client(server_address, input, seq_len);
 }

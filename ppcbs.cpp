@@ -11,7 +11,6 @@
 #include <unistd.h>
 #include <signal.h>
 
-#include <bitset>
 #include <stdio.h>
 #include <iostream>
 #include "err.h"
@@ -81,7 +80,7 @@ int receive_DATA(int socket_fd, uint64_t ses_id, uint8_t prot, uint64_t seq_len,
         // Receiving packet.
         static char buffer[64000+21];
         uint64_t res_ses_id, res_packet_nr;
-        uint32_t res_bits_nr;
+        uint32_t res_bytes_nr;
         uint8_t res_type;
 
         while (true) {
@@ -97,7 +96,7 @@ int receive_DATA(int socket_fd, uint64_t ses_id, uint8_t prot, uint64_t seq_len,
             res_type = buffer[0];
             memcpy(&res_ses_id, buffer + 1, 8);
             memcpy(&res_packet_nr, buffer + 9, 8);
-            memcpy(&res_bits_nr, buffer + 17, 4);
+            memcpy(&res_bytes_nr, buffer + 17, 4);
 
             if (res_type != DATA) {
                 err("invalid packet type");
@@ -116,8 +115,8 @@ int receive_DATA(int socket_fd, uint64_t ses_id, uint8_t prot, uint64_t seq_len,
         }
 
         // Here we have received correct DATA packet.
-        memcpy(data + already_read, buffer + 21, res_bits_nr);
-        already_read += res_bits_nr;
+        memcpy(data + already_read, buffer + 21, res_bytes_nr);
+        already_read += res_bytes_nr;
         last_packet_nr = res_packet_nr;
     }
     return 0;
@@ -145,7 +144,8 @@ void udp_server(struct sockaddr_in server_address) {
         static char data[DATA_MAX_SIZE];
         if (receive_DATA(socket_fd, ses_id, prot, seq_len, data))
             continue; // Next client.
-        printf("%s", data);
+        printf("data: %s", data);
+        fflush(stdout);
 
         send_RCVD(socket_fd, client_address, ses_id);
     }
