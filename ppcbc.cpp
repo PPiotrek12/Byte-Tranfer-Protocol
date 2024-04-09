@@ -47,32 +47,39 @@ void receive_CON_ACC_RJT(int socket_fd, struct sockaddr_in server_address, uint8
 }
 
 void receive_RCVD_RJT(int socket_fd, struct sockaddr_in server_address, uint64_t ses_id) {
-    static char buffer[RCVD_LEN];
-    socklen_t address_length = (socklen_t) sizeof(server_address);
-    ssize_t length = recvfrom(socket_fd, buffer, RCVD_LEN, 0, (struct sockaddr *) &server_address, &address_length);
-    if (length < 0) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) // timeout
-            exit(1);
-        syserr("recvfrom");
-    }
-    uint8_t res_type = buffer[0];
-    uint64_t res_ses_id;
-    memcpy(&res_ses_id, buffer + 1, 8);
-    if (res_type != RCVD && res_type != RJT)
-        fatal("invalid packet type");
-    if (ses_id != res_ses_id) 
-        fatal("invalid session id");
-    if (res_type == RCVD) {
-        if (length != RCVD_LEN)
-            fatal("invalid packet length");
-        return;
-    }
-    else {
-        if (length < RJT_LEN)
-            fatal("invalid packet length");
-        uint64_t res_packet_nr;
-        memcpy(&res_packet_nr, buffer + 9, 7);
-        fatal("packet number %ld was rejected", res_packet_nr);
+    while (true) {
+        static char buffer[RJT_LEN];
+        socklen_t address_length = (socklen_t) sizeof(server_address);
+        ssize_t length = recvfrom(socket_fd, buffer, RJT_LEN, 0, (struct sockaddr *) &server_address, &address_length);
+        if (length < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) // timeout
+                exit(1);
+            syserr("recvfrom");
+        }
+        uint8_t res_type = buffer[0];
+        uint64_t res_ses_id;
+        memcpy(&res_ses_id, buffer + 1, 8);
+        if (ses_id != res_ses_id) 
+            fatal("invalid session id");
+        if (res_type != RCVD && res_type != RJT) {
+            if (res_type != CONACC && res_type != ACC)
+                fatal("invalid packet type");
+            else
+                continue; // Ignoring earlier packets.
+        }
+        if (res_type == RCVD) {
+            if (length != RCVD_LEN)
+                fatal("invalid packet length");
+            return;
+        }
+        else {
+            if (length < RJT_LEN)
+                fatal("invalid packet length");
+            uint64_t res_packet_nr;
+            memcpy(&res_packet_nr, buffer + 9, 7);
+            fatal("packet number %ld was rejected", res_packet_nr);
+        }
+        break;
     }
 }
 
