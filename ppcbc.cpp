@@ -29,8 +29,7 @@ int receive_CON_ACC_RJT(int socket_fd, struct sockaddr_in *server_address, uint8
     static char buffer[9];
     socklen_t address_length = (socklen_t) sizeof(server_address);
     ssize_t length = recvfrom(socket_fd, buffer, 9, 0, (struct sockaddr *) server_address, &address_length);
-    if (length < 0)
-        return 1;
+    if (length < 0) syserr("recvfrom");
     // if (length != 9) return 1;
     *type = buffer[0];
     if (*type != CONACC && *type != CONRJT)
@@ -67,6 +66,7 @@ void udp_client(struct sockaddr_in server_address, uint64_t seq_len) {
         fatal("incorrect respose to CONN package");
     if (type == CONRJT) 
         return;
+    cout<<"mam\n";
 
     
 }
