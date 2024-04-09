@@ -25,23 +25,20 @@ using namespace std;
 
 
 
-int receive_CON_ACC_RJT(int socket_fd, struct sockaddr_in *server_address, uint8_t *type, uint64_t ses_id) {
+int receive_CON_ACC_RJT(int socket_fd, struct sockaddr_in *server_address, uint8_t *type, uint64_t conn_ses_id) {
     static char buffer[9];
     socklen_t address_length = (socklen_t) sizeof(server_address);
     ssize_t length = recvfrom(socket_fd, buffer, 9, 0, (struct sockaddr *) server_address, &address_length);
     if (length < 0)
         return 1;
-    // if (length != 9)
-    //     return 1;
-    
+    // if (length != 9) return 1;
     *type = buffer[0];
-    uint64_t res_ses_id;
-    memcpy(&res_ses_id, buffer + 1, 8);
-
-    if (ses_id != res_ses_id) 
+    if (*type != CONACC && *type != CONRJT)
         return 1;
 
-    if (*type != CONACC && *type != CONRJT)
+    uint64_t res_ses_id;
+    memcpy(&res_ses_id, buffer + 1, 8);
+    if (conn_ses_id != res_ses_id) 
         return 1;
     return 0;
 }
@@ -61,12 +58,12 @@ void udp_client(struct sockaddr_in server_address, uint64_t seq_len) {
         syserr("socket");
     }
     srand(time(NULL));
-    uint64_t ses_id = ((long long)rand() << 32) | rand(); // TODO
+    uint64_t conn_ses_id = ((long long)rand() << 32) | rand(); // TODO
 
-    send_CONN(socket_fd, server_address, ses_id, PROT_UDP, seq_len);
+    send_CONN(socket_fd, server_address, conn_ses_id, PROT_UDP, seq_len);
 
     uint8_t type = -1;
-    if (receive_CON_ACC_RJT(socket_fd, &server_address, &type, ses_id)) 
+    if (receive_CON_ACC_RJT(socket_fd, &server_address, &type, conn_ses_id)) 
         fatal("incorrect respose to CONN package");
     if (type == CONRJT) 
         return;

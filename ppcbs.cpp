@@ -35,21 +35,21 @@ void send_CONRJT(int socket_fd, struct sockaddr_in client_address, uint64_t ses_
     send_message(socket_fd, message, sizeof(message), client_address);
 }
 
-int receive_CONN(int socket_fd, struct sockaddr_in *client_address, uint8_t *type, uint64_t *ses_id, uint8_t *prot, uint64_t *seq_len) {
+int receive_CONN(int socket_fd, struct sockaddr_in *client_address, uint64_t *ses_id, uint8_t *prot, uint64_t *seq_len) {
     static char buffer[18];
     socklen_t address_length = (socklen_t) sizeof(client_address);
     ssize_t length = recvfrom(socket_fd, buffer, 18, 0, (struct sockaddr *) client_address, &address_length);
     if (length < 0)
         return 1;
-    // if (length != 18)
-    //     return 1;
-    
-    *type = buffer[0];
+    // if (length != 18) return 1;
+    if (buffer[0] != CONN)
+        return 1;
+
     memcpy(ses_id, buffer + 1, 8);
     *prot = buffer[9];
     memcpy(seq_len, buffer + 10, 8);
 
-    if (*type != CONN)
+    if (*prot != PROT_UDP && *prot != PROT_UDPR)
         return 1;
     return 0;
 }
@@ -62,16 +62,19 @@ void udp_server(struct sockaddr_in server_address) {
         syserr("bind");
 
     while (true) {
-        uint8_t prot, type;
-        uint64_t seq_len, ses_id;
-        fflush(stdout);
+        uint8_t res_prot, conn_prot;
+        uint64_t res_seq_len, conn_seq_len;
+        uint64_t res_ses_id, conn_ses_id;
+        struct sockaddr_in res_client_address, conn_client_address;
 
-        struct sockaddr_in client_address;
-
-        if (receive_CONN(socket_fd, &client_address, &type, &ses_id, &prot, &seq_len))
+        if (receive_CONN(socket_fd, &res_client_address, &res_ses_id, &res_prot, &res_seq_len))
             continue;
-    
-        send_CONACC(socket_fd, client_address, ses_id);
+        conn_prot = res_prot;
+        conn_seq_len = res_seq_len;
+        conn_ses_id = res_ses_id;
+        conn_client_address = res_client_address;
+        
+        send_CONACC(socket_fd, conn_client_address, conn_ses_id);
     }
 }
 
