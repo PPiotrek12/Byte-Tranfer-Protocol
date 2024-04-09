@@ -22,28 +22,28 @@ using namespace std;
 const int DATA_MAX_SIZE = 64000;
 
 void send_CONACC(int socket_fd, struct sockaddr_in client_address, uint64_t ses_id) {
-    static char message[9];
+    static char message[CONACC_LEN];
     message[0] = CONACC;
     memcpy(message + 1, &ses_id, 8);
     send_message(socket_fd, message, sizeof(message), client_address);
 }
 
 void send_CONRJT(int socket_fd, struct sockaddr_in client_address, uint64_t ses_id) {
-    static char message[9];
+    static char message[CONRJT_LEN];
     message[0] = CONRJT;
     memcpy(message + 1, &ses_id, 8);
     send_message(socket_fd, message, sizeof(message), client_address);
 }
 
 void send_RCVD(int socket_fd, struct sockaddr_in client_address, uint64_t ses_id) {
-    static char message[9];
+    static char message[RCVD_LEN];
     message[0] = RCVD;
     memcpy(message + 1, &ses_id, 8);
     send_message(socket_fd, message, sizeof(message), client_address);
 }
 
 void send_RJT(int socket_fd, struct sockaddr_in client_address, uint64_t ses_id, uint64_t packet_nr) {
-    static char message[17];
+    static char message[RJT_LEN];
     message[0] = RJT;
     memcpy(message + 1, &ses_id, 8);
     memcpy(message + 9, &packet_nr, 8);
@@ -51,16 +51,16 @@ void send_RJT(int socket_fd, struct sockaddr_in client_address, uint64_t ses_id,
 }
 
 void receive_CONN(int socket_fd, struct sockaddr_in *client_address, uint64_t *ses_id, uint8_t *prot, uint64_t *seq_len) {
-    static char buffer[18];
+    static char buffer[CONN_LEN];
     while (true) {
         socklen_t address_length = (socklen_t) sizeof(client_address);
-        ssize_t length = recvfrom(socket_fd, buffer, 18, 0, (struct sockaddr *) client_address, &address_length);
+        ssize_t length = recvfrom(socket_fd, buffer, CONN_LEN, 0, (struct sockaddr *) client_address, &address_length);
         if (length < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) // timeout
                 continue;
             syserr("recvfrom");
         }
-        if (length != 18) {
+        if (length != CONN_LEN) {
             err("invalid packet length");
             continue;
         }
@@ -85,22 +85,20 @@ void receive_CONN(int socket_fd, struct sockaddr_in *client_address, uint64_t *s
 
 // Returns 1 if there is need to close connection.
 int receive_DATA(int socket_fd, uint64_t ses_id, uint8_t prot, uint64_t seq_len, char *data) {
-    uint64_t already_read = 0;
-    uint64_t last_packet_nr = 0;
+    uint64_t already_read = 0, last_packet_nr = 0;
     while (already_read < seq_len) {
         // Receiving packet.
-        static char buffer[64000+21];
+        static char buffer[DATA_MAX_SIZE + MIN_DATA_LEN];
         uint64_t res_ses_id, res_packet_nr;
         uint32_t res_bytes_nr;
         uint8_t res_type;
-
         while (true) {
             struct sockaddr_in res_address;
             socklen_t address_length = (socklen_t) sizeof(res_address);
             ssize_t length = recvfrom(socket_fd, buffer, sizeof(buffer), 0, (struct sockaddr *) &res_address, &address_length);
             if (length < 0) {
                 if (errno == EAGAIN || errno == EWOULDBLOCK) // timeout
-                    return 1;
+                    return 1; // Next client.
                 syserr("recvfrom");
             }
             res_type = buffer[0];
@@ -108,34 +106,36 @@ int receive_DATA(int socket_fd, uint64_t ses_id, uint8_t prot, uint64_t seq_len,
             memcpy(&res_packet_nr, buffer + 9, 8);
             memcpy(&res_bytes_nr, buffer + 17, 4);
 
-            if (length < 22) {
-                //err("invalid packet length");
-                send_RJT(socket_fd, res_address, res_ses_id, res_packet_nr);
-                return 1;
+            if (res_type == CONN) { // Someone is trying to interrupt.
+                send_CONRJT(socket_fd, res_address, res_ses_id);
+                continue; // Ignore packet.
             }
-
-            if (res_type != DATA) {
-                if (res_type == CONN) {
-                    send_CONRJT(socket_fd, res_address, res_ses_id);
-                    continue; // Ignore packet.
-                }
-                err("invalid packet type");
-                return 1;
-            }
-            if (res_ses_id != ses_id) {
+            if (res_ses_id != ses_id) { // Client authorisation.
                 err("invalid session id");
+                continue; // Ignore packet.
+            }
+            if (res_type != DATA) { // Correct client send invalid packet - close connection.
+                err("invalid packet type");
+                return 1; // Next client.
+            }
+            if (length < MIN_DATA_LEN) { // Correct client send invalid packet - close connection.
+                err("invalid packet length");
                 send_RJT(socket_fd, res_address, res_ses_id, res_packet_nr);
-                return 1;
+                return 1; // Next client.
             }
             if (already_read > 0 && res_packet_nr != last_packet_nr + 1) {
-                if (res_packet_nr < last_packet_nr + 1) continue; // Ignore packet.
+                if (res_packet_nr < last_packet_nr + 1) 
+                    continue; // Ignore packet.
                 err("invalid packet number");
                 send_RJT(socket_fd, res_address, res_ses_id, res_packet_nr);
-                return 1;
+                return 1; // Next client.
+            }
+            if (already_read + res_bytes_nr > seq_len) {
+                send_RJT(socket_fd, res_address, res_ses_id, res_packet_nr);
+                return 1; // Next client.
             }
             break;
         }
-
         // Here we have received correct DATA packet.
         memcpy(data + already_read, buffer + 21, res_bytes_nr);
         already_read += res_bytes_nr;
@@ -166,7 +166,7 @@ void udp_server(struct sockaddr_in server_address) {
         static char data[DATA_MAX_SIZE];
         if (receive_DATA(socket_fd, ses_id, prot, seq_len, data))
             continue; // Next client.
-        printf("data: %s", data);
+        printf("%s", data);
         fflush(stdout);
 
         send_RCVD(socket_fd, client_address, ses_id);

@@ -23,19 +23,19 @@
 #include <vector>
 
 using namespace std;
-
+const uint64_t PACKET_SIZE = 100; // TODO
 
 
 void receive_CON_ACC_RJT(int socket_fd, struct sockaddr_in server_address, uint8_t *type, uint64_t ses_id) {
-    static char buffer[9];
+    static char buffer[CONRJT_LEN];
     socklen_t address_length = (socklen_t) sizeof(server_address);
-    ssize_t length = recvfrom(socket_fd, buffer, 9, 0, (struct sockaddr *) &server_address, &address_length);
+    ssize_t length = recvfrom(socket_fd, buffer, CONRJT_LEN, 0, (struct sockaddr *) &server_address, &address_length);
     if (length < 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) // timeout
             exit(1);
         syserr("recvfrom");
     }
-    if (length != 9)
+    if (length != CONRJT_LEN)
         fatal("invalid packet length");
     *type = buffer[0];
     if (*type != CONACC && *type != CONRJT)
@@ -47,9 +47,9 @@ void receive_CON_ACC_RJT(int socket_fd, struct sockaddr_in server_address, uint8
 }
 
 void receive_RCVD_RJT(int socket_fd, struct sockaddr_in server_address, uint64_t ses_id) {
-    static char buffer[17];
+    static char buffer[RCVD_LEN];
     socklen_t address_length = (socklen_t) sizeof(server_address);
-    ssize_t length = recvfrom(socket_fd, buffer, 17, 0, (struct sockaddr *) &server_address, &address_length);
+    ssize_t length = recvfrom(socket_fd, buffer, RCVD_LEN, 0, (struct sockaddr *) &server_address, &address_length);
     if (length < 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) // timeout
             exit(1);
@@ -62,10 +62,13 @@ void receive_RCVD_RJT(int socket_fd, struct sockaddr_in server_address, uint64_t
         fatal("invalid packet type");
     if (ses_id != res_ses_id) 
         fatal("invalid session id");
-    if (res_type == RCVD && length != 9)
-        fatal("invalid packet length"); 
-    if (res_type == RJT) {
-        if (length < 17)
+    if (res_type == RCVD) {
+        if (length != RCVD_LEN)
+            fatal("invalid packet length");
+        return;
+    }
+    else {
+        if (length < RJT_LEN)
             fatal("invalid packet length");
         uint64_t res_packet_nr;
         memcpy(&res_packet_nr, buffer + 9, 7);
@@ -74,7 +77,7 @@ void receive_RCVD_RJT(int socket_fd, struct sockaddr_in server_address, uint64_t
 }
 
 void send_CONN(int socket_fd, struct sockaddr_in server_address, uint64_t ses_id, uint8_t prot, uint64_t seq_len) {
-    static char message[18];
+    static char message[CONN_LEN];
     message[0] = CONN;
     memcpy(message + 1, &ses_id, 8);
     message[9] = prot;
@@ -83,16 +86,14 @@ void send_CONN(int socket_fd, struct sockaddr_in server_address, uint64_t ses_id
 }
 
 void send_DATA(int socket_fd, struct sockaddr_in server_address, uint64_t ses_id, char *data, uint64_t seq_len) {
-    uint32_t packet_size = 100; // TODO
-
     uint64_t already_sent = 0;
     uint64_t packet_nr = 0;
     while (already_sent < seq_len) {
-        char message[packet_size + 21];
+        char message[PACKET_SIZE + 21];
         message[0] = DATA;
         memcpy(message + 1, &ses_id, 8);
         memcpy(message + 9, &packet_nr, 8);
-        uint32_t bytes_nr = min((uint64_t) packet_size, seq_len - already_sent);
+        uint32_t bytes_nr = min((uint64_t) PACKET_SIZE, seq_len - already_sent);
         memcpy(message + 17, &bytes_nr, 4);
         mempcpy(message + 21, data, bytes_nr);
         send_message(socket_fd, message, sizeof(message), server_address);

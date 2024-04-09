@@ -13,6 +13,14 @@ const uint8_t ACC = 5;
 const uint8_t RJT = 6;
 const uint8_t RCVD = 7;
 
+const uint8_t CONN_LEN = 18;
+const uint8_t CONACC_LEN = 9;
+const uint8_t CONRJT_LEN = 9;
+const uint8_t MIN_DATA_LEN = 22;
+const uint8_t ACC_LEN = 17;
+const uint8_t RJT_LEN = 17;
+const uint8_t RCVD_LEN = 9;
+
 const uint8_t PROT_TCP = 1;
 const uint8_t PROT_UDP = 2;
 const uint8_t PROT_UDPR = 3;
