@@ -18,7 +18,18 @@
 
 using namespace std;
 
+namespace glob {
+    int last_socket_fd;
+    char *last_message;
+    ssize_t last_message_length;
+    struct sockaddr_in last_address;
+}
+
 void send_message(int socket_fd, char *message, ssize_t message_length, struct sockaddr_in address) {
+    glob::last_socket_fd = socket_fd;
+    glob::last_message = message;
+    glob::last_message_length = message_length;
+    glob::last_address = address;
     socklen_t address_length = (socklen_t) sizeof(address);
     ssize_t sent_length = sendto(socket_fd, message, message_length, 0,
                                   (struct sockaddr *) &address, address_length);
@@ -26,6 +37,11 @@ void send_message(int socket_fd, char *message, ssize_t message_length, struct s
         syserr("sendto");
     }
 }
+
+void resend_last_message() {
+    send_message(glob::last_socket_fd, glob::last_message, glob::last_message_length, glob::last_address);
+}
+
 
 uint16_t read_port(char const *string) {
     char *endptr;

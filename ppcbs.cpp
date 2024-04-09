@@ -139,6 +139,7 @@ int receive_one_DATA_packet(int socket_fd, struct sockaddr_in client_address,
         ssize_t length = recvfrom(socket_fd, buffer, DATA_MAX_SIZE + MIN_DATA_LEN, 0, (struct sockaddr *) res_address, &address_length);
         if (length < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) { // Timeout.
+            printf("%d\n", retransmits);
                 if (retransmits > 0) {
                     if (already_read == 0) // Last packet was CONACC.
                         send_CONACC(socket_fd, client_address, ses_id);
@@ -215,6 +216,7 @@ void udp_server(struct sockaddr_in server_address) {
         static char data[DATA_MAX_SIZE];
         int retransmits = 0;
         if (prot == PROT_UDPR) retransmits = MAX_RETRANSMITS;
+        printf("%d\n\n", retransmits);
         if (receive_DATA(socket_fd, client_address, ses_id, retransmits, seq_len, data))
             continue; // Next client.
         printf("%s", data);
