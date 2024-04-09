@@ -10,7 +10,7 @@ const uint8_t CONACC = 2;
 const uint8_t CONRJT = 3;
 const uint8_t DATA = 4;
 const uint8_t ACC = 5;
-const uint8_t REJ = 6;
+const uint8_t RJT = 6;
 const uint8_t RCVD = 7;
 
 const uint8_t PROT_TCP = 1;

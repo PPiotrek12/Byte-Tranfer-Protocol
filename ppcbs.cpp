@@ -42,6 +42,14 @@ void send_RCVD(int socket_fd, struct sockaddr_in client_address, uint64_t ses_id
     send_message(socket_fd, message, sizeof(message), client_address);
 }
 
+void send_RJT(int socket_fd, struct sockaddr_in client_address, uint64_t ses_id, uint64_t packet_nr) {
+    static char message[17];
+    message[0] = RJT;
+    memcpy(message + 1, &ses_id, 8);
+    memcpy(message + 9, &packet_nr, 8);
+    send_message(socket_fd, message, sizeof(message), client_address);
+}
+
 void receive_CONN(int socket_fd, struct sockaddr_in *client_address, uint64_t *ses_id, uint8_t *prot, uint64_t *seq_len) {
     static char buffer[18];
     while (true) {
@@ -52,7 +60,10 @@ void receive_CONN(int socket_fd, struct sockaddr_in *client_address, uint64_t *s
                 continue;
             syserr("recvfrom");
         }
-        // if (length != 18) continue;
+        if (length != 18) {
+            err("invalid packet length");
+            continue;
+        }
         uint8_t res_type = buffer[0];
         uint8_t res_prot = buffer[9];
         if (res_type != CONN) {
@@ -92,23 +103,34 @@ int receive_DATA(int socket_fd, uint64_t ses_id, uint8_t prot, uint64_t seq_len,
                     return 1;
                 syserr("recvfrom");
             }
-
             res_type = buffer[0];
             memcpy(&res_ses_id, buffer + 1, 8);
             memcpy(&res_packet_nr, buffer + 9, 8);
             memcpy(&res_bytes_nr, buffer + 17, 4);
 
+            if (length < 22) {
+                //err("invalid packet length");
+                send_RJT(socket_fd, res_address, res_ses_id, res_packet_nr);
+                return 1;
+            }
+
             if (res_type != DATA) {
+                if (res_type == CONN) {
+                    send_CONRJT(socket_fd, res_address, res_ses_id);
+                    continue; // Ignore packet.
+                }
                 err("invalid packet type");
                 return 1;
             }
             if (res_ses_id != ses_id) {
                 err("invalid session id");
+                send_RJT(socket_fd, res_address, res_ses_id, res_packet_nr);
                 return 1;
             }
             if (already_read > 0 && res_packet_nr != last_packet_nr + 1) {
-                if (res_packet_nr < last_packet_nr + 1) continue;
+                if (res_packet_nr < last_packet_nr + 1) continue; // Ignore packet.
                 err("invalid packet number");
+                send_RJT(socket_fd, res_address, res_ses_id, res_packet_nr);
                 return 1;
             }
             break;
@@ -127,8 +149,8 @@ void udp_server(struct sockaddr_in server_address) {
     if (socket_fd < 0)
         syserr("socket");
     struct timeval timeout;
-    timeout.tv_sec = 0;
-    timeout.tv_usec = MAX_WAIT;
+    timeout.tv_sec = MAX_WAIT;
+    timeout.tv_usec = 0;
     if (setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, (void *)&timeout, sizeof(timeout)))
         syserr("setsockopt");
     if (bind(socket_fd, (struct sockaddr *) &server_address, (socklen_t) sizeof(server_address)) < 0)

@@ -35,7 +35,8 @@ void receive_CON_ACC_RJT(int socket_fd, struct sockaddr_in server_address, uint8
             exit(1);
         syserr("recvfrom");
     }
-    // if (length != 9) return 1;
+    if (length != 9)
+        fatal("invalid packet length");
     *type = buffer[0];
     if (*type != CONACC && *type != CONRJT)
         fatal("invalid packet type");
@@ -45,23 +46,31 @@ void receive_CON_ACC_RJT(int socket_fd, struct sockaddr_in server_address, uint8
         fatal("invalid session id");
 }
 
-void receive_RCVD(int socket_fd, struct sockaddr_in server_address, uint64_t ses_id) {
-    static char buffer[9];
+void receive_RCVD_RJT(int socket_fd, struct sockaddr_in server_address, uint64_t ses_id) {
+    static char buffer[17];
     socklen_t address_length = (socklen_t) sizeof(server_address);
-    ssize_t length = recvfrom(socket_fd, buffer, 9, 0, (struct sockaddr *) &server_address, &address_length);
+    ssize_t length = recvfrom(socket_fd, buffer, 17, 0, (struct sockaddr *) &server_address, &address_length);
     if (length < 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) // timeout
             exit(1);
         syserr("recvfrom");
     }
-    // if (length != 9) return 1;
     uint8_t res_type = buffer[0];
-    if (res_type != RCVD)
-        fatal("invalid packet type");
     uint64_t res_ses_id;
     memcpy(&res_ses_id, buffer + 1, 8);
+    if (res_type != RCVD && res_type != RJT)
+        fatal("invalid packet type");
     if (ses_id != res_ses_id) 
         fatal("invalid session id");
+    if (res_type == RCVD && length != 9)
+        fatal("invalid packet length"); 
+    if (res_type == RJT) {
+        if (length < 17)
+            fatal("invalid packet length");
+        uint64_t res_packet_nr;
+        memcpy(&res_packet_nr, buffer + 9, 7);
+        fatal("packet number %ld was rejected", res_packet_nr);
+    }
 }
 
 void send_CONN(int socket_fd, struct sockaddr_in server_address, uint64_t ses_id, uint8_t prot, uint64_t seq_len) {
@@ -98,8 +107,8 @@ void udp_client(struct sockaddr_in server_address, char *data, uint64_t seq_len)
         syserr("socket");
     }
     struct timeval timeout;
-    timeout.tv_sec = 0;
-    timeout.tv_usec = MAX_WAIT;
+    timeout.tv_sec = MAX_WAIT;
+    timeout.tv_usec = 0;
     if (setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, (void *)&timeout, sizeof(timeout)))
         syserr("setsockopt");
 
@@ -114,7 +123,8 @@ void udp_client(struct sockaddr_in server_address, char *data, uint64_t seq_len)
         return;
 
     send_DATA(socket_fd, server_address, ses_id, data, seq_len);
-    receive_RCVD(socket_fd, server_address, ses_id);
+
+    receive_RCVD_RJT(socket_fd, server_address, ses_id);
 }
 
 int main(int argc, char *argv[]) {

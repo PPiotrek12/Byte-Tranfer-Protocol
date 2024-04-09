@@ -46,5 +46,4 @@ void err(const char* fmt, ...)
     va_end(fmt_args);
 
     fprintf(stderr, "\n");
-    exit(1);
 }
