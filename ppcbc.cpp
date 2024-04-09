@@ -66,9 +66,6 @@ void udp_client(struct sockaddr_in server_address, uint64_t seq_len) {
         fatal("incorrect respose to CONN package");
     if (type == CONRJT) 
         return;
-    cout<<"mam\n";
-
-    
 }
 
 int main(int argc, char *argv[]) {

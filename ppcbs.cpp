@@ -36,6 +36,13 @@ void send_CONRJT(int socket_fd, struct sockaddr_in client_address, uint64_t ses_
     send_message(socket_fd, message, sizeof(message), client_address);
 }
 
+void send_RCVD(int socket_fd, struct sockaddr_in client_address, uint64_t ses_id) {
+    static char message[9];
+    message[0] = RCVD;
+    memcpy(message + 1, &ses_id, 8);
+    send_message(socket_fd, message, sizeof(message), client_address);
+}
+
 void receive_CONN(int socket_fd, struct sockaddr_in *client_address, uint64_t *ses_id, uint8_t *prot, uint64_t *seq_len) {
     static char buffer[18];
     socklen_t address_length = (socklen_t) sizeof(client_address);
@@ -120,7 +127,11 @@ void udp_server(struct sockaddr_in server_address) {
         send_CONACC(socket_fd, client_address, ses_id);
 
         static char data[DATA_MAX_SIZE];
-        receive_DATA(socket_fd, ses_id, prot, seq_len, data);
+        if (receive_DATA(socket_fd, ses_id, prot, seq_len, data))
+            continue;
+        printf("%s", data);
+
+        send_RCVD(socket_fd, client_address, ses_id);
     }
 }
 
