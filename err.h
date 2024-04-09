@@ -9,4 +9,7 @@ void syserr(const char* fmt, ...);
 /* Print information about an error and quits. */
 void fatal(const char* fmt, ...);
 
+/* Print information about an error. */
+void err(const char* fmt, ...);
+
 #endif

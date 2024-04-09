@@ -45,8 +45,8 @@ void send_RCVD(int socket_fd, struct sockaddr_in client_address, uint64_t ses_id
 
 void receive_CONN(int socket_fd, struct sockaddr_in *client_address, uint64_t *ses_id, uint8_t *prot, uint64_t *seq_len) {
     static char buffer[18];
-    socklen_t address_length = (socklen_t) sizeof(client_address);
     while (true) {
+        socklen_t address_length = (socklen_t) sizeof(client_address);
         ssize_t length = recvfrom(socket_fd, buffer, 18, 0, (struct sockaddr *) client_address, &address_length);
         if (length < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) // timeout
@@ -56,8 +56,14 @@ void receive_CONN(int socket_fd, struct sockaddr_in *client_address, uint64_t *s
         // if (length != 18) continue;
         uint8_t res_type = buffer[0];
         uint8_t res_prot = buffer[9];
-        if (res_type != CONN) continue;
-        if (res_prot != PROT_UDP && res_prot != PROT_UDPR) continue;
+        if (res_type != CONN) {
+            err("invalid packet type");
+            continue;
+        }
+        if (res_prot != PROT_UDP && res_prot != PROT_UDPR) {
+            err("invalid protocol");
+            continue;
+        }
         break;
     }
 
@@ -93,9 +99,19 @@ int receive_DATA(int socket_fd, uint64_t ses_id, uint8_t prot, uint64_t seq_len,
             memcpy(&res_packet_nr, buffer + 9, 8);
             memcpy(&res_bits_nr, buffer + 17, 4);
 
-            if (res_type != DATA) continue;
-            if (res_ses_id != ses_id) continue;
-            if (already_read > 0 && res_packet_nr != last_packet_nr + 1) continue;
+            if (res_type != DATA) {
+                err("invalid packet type");
+                return 1;
+            }
+            if (res_ses_id != ses_id) {
+                err("invalid session id");
+                return 1;
+            }
+            if (already_read > 0 && res_packet_nr != last_packet_nr + 1) {
+                if (res_packet_nr < last_packet_nr + 1) continue;
+                err("invalid packet number");
+                return 1;
+            }
             break;
         }
 
@@ -109,13 +125,13 @@ int receive_DATA(int socket_fd, uint64_t ses_id, uint8_t prot, uint64_t seq_len,
 
 void udp_server(struct sockaddr_in server_address) {
     int socket_fd = socket(PF_INET, SOCK_DGRAM, 0);
+    if (socket_fd < 0)
+        syserr("socket");
     struct timeval timeout;
     timeout.tv_sec = 0;
     timeout.tv_usec = MAX_WAIT;
     if (setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, (void *)&timeout, sizeof(timeout)))
         syserr("setsockopt");
-    if (socket_fd < 0)
-        syserr("socket");
     if (bind(socket_fd, (struct sockaddr *) &server_address, (socklen_t) sizeof(server_address)) < 0)
         syserr("bind");
 
@@ -128,7 +144,7 @@ void udp_server(struct sockaddr_in server_address) {
 
         static char data[DATA_MAX_SIZE];
         if (receive_DATA(socket_fd, ses_id, prot, seq_len, data))
-            continue;
+            continue; // Next client.
         printf("%s", data);
 
         send_RCVD(socket_fd, client_address, ses_id);
