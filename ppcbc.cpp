@@ -45,6 +45,25 @@ void receive_CON_ACC_RJT(int socket_fd, struct sockaddr_in server_address, uint8
         fatal("invalid session id");
 }
 
+void receive_RCVD(int socket_fd, struct sockaddr_in server_address, uint64_t ses_id) {
+    static char buffer[9];
+    socklen_t address_length = (socklen_t) sizeof(server_address);
+    ssize_t length = recvfrom(socket_fd, buffer, 9, 0, (struct sockaddr *) &server_address, &address_length);
+    if (length < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK) // timeout
+            exit(1);
+        syserr("recvfrom");
+    }
+    // if (length != 9) return 1;
+    uint8_t res_type = buffer[0];
+    if (res_type != RCVD)
+        fatal("invalid packet type");
+    uint64_t res_ses_id;
+    memcpy(&res_ses_id, buffer + 1, 8);
+    if (ses_id != res_ses_id) 
+        fatal("invalid session id");
+}
+
 void send_CONN(int socket_fd, struct sockaddr_in server_address, uint64_t ses_id, uint8_t prot, uint64_t seq_len) {
     static char message[18];
     message[0] = CONN;
@@ -95,6 +114,7 @@ void udp_client(struct sockaddr_in server_address, char *data, uint64_t seq_len)
         return;
 
     send_DATA(socket_fd, server_address, ses_id, data, seq_len);
+    receive_RCVD(socket_fd, server_address, ses_id);
 }
 
 int main(int argc, char *argv[]) {
