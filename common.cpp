@@ -23,23 +23,69 @@ namespace glob {
     char *last_message;
     ssize_t last_message_length;
     struct sockaddr_in last_address;
+    uint8_t last_prot;
 }
 
-void send_message(int socket_fd, char *message, ssize_t message_length, struct sockaddr_in address) {
+// Read n bytes from a descriptor. Use in place of read() when fd is a stream socket.
+ssize_t readn(int fd, char *vptr, size_t n) {
+    ssize_t nleft, nread;
+    char *ptr;
+
+    ptr = vptr;
+    nleft = n;
+    while (nleft > 0) {
+        if ((nread = read(fd, ptr, nleft)) < 0)
+            return nread;     // When error, return < 0.
+        else if (nread == 0)
+            break;            // EOF
+
+        nleft -= nread;
+        ptr += nread;
+    }
+    return n - nleft;         // return >= 0
+}
+
+// Write n bytes to a descriptor.
+ssize_t writen(int fd, char *vptr, size_t n){
+    ssize_t nleft, nwritten;
+    char *ptr;
+
+    ptr = vptr;               // Can't do pointer arithmetic on void*.
+    nleft = n;
+    while (nleft > 0) {
+        if ((nwritten = write(fd, ptr, nleft)) <= 0)
+            return nwritten;  // error
+
+        nleft -= nwritten;
+        ptr += nwritten;
+    }
+    return n;
+}
+
+void send_message(int socket_fd, char *message, ssize_t message_length, struct sockaddr_in address, uint8_t prot) {
     glob::last_socket_fd = socket_fd;
     glob::last_message = message;
     glob::last_message_length = message_length;
     glob::last_address = address;
+    glob::last_prot = prot;
     socklen_t address_length = (socklen_t) sizeof(address);
-    ssize_t sent_length = sendto(socket_fd, message, message_length, 0,
+    if (prot == PROT_TCP) {
+        ssize_t sent_length = writen(socket_fd, message, message_length);
+        if (sent_length < 0)
+            syserr("writen");
+        else if ((ssize_t) sent_length != message_length)
+            fatal("incomplete writen");
+    }
+    else {
+        ssize_t sent_length = sendto(socket_fd, message, message_length, 0,
                                   (struct sockaddr *) &address, address_length);
-    if (sent_length != message_length) {
-        syserr("sendto");
+        if (sent_length != message_length)
+            syserr("sendto");
     }
 }
 
 void resend_last_message() {
-    send_message(glob::last_socket_fd, glob::last_message, glob::last_message_length, glob::last_address);
+    send_message(glob::last_socket_fd, glob::last_message, glob::last_message_length, glob::last_address, glob::last_prot);
 }
 
 

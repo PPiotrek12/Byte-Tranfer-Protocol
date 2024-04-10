@@ -27,7 +27,7 @@ const uint8_t PROT_UDPR = 3;
 
 uint16_t read_port(char const *string);
 struct sockaddr_in get_server_address(char const *host, uint16_t port);
-void send_message(int socket_fd, char *message, ssize_t message_length, struct sockaddr_in server_address);
+void send_message(int socket_fd, char *message, ssize_t message_length, struct sockaddr_in server_address, uint8_t prot);
 void resend_last_message();
 
 #endif

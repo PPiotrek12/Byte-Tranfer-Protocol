@@ -151,18 +151,19 @@ void send_CONN(int socket_fd, struct sockaddr_in server_address, uint64_t ses_id
     memcpy(message + 1, &ses_id, 8);
     message[9] = prot;
     memcpy(message + 10, &seq_len, 8);
-    send_message(socket_fd, message, sizeof(message), server_address);
+    send_message(socket_fd, message, sizeof(message), server_address, prot);
 }
 
-void send_one_DATA_packet(int socket_fd, struct sockaddr_in server_address, uint64_t ses_id, 
-                          uint64_t packet_nr, uint32_t bytes_nr, char *data, uint64_t already_sent) {
+void send_one_DATA_packet(int socket_fd, struct sockaddr_in server_address, 
+                          uint64_t ses_id, uint64_t packet_nr, uint32_t bytes_nr,
+                          char *data, uint64_t already_sent, uint8_t prot) {
     char message[DATA_PACKET_SIZE + 21];
     message[0] = DATA;
     memcpy(message + 1, &ses_id, 8);
     memcpy(message + 9, &packet_nr, 8);
     memcpy(message + 17, &bytes_nr, 4);
-    mempcpy(message + 21, data + already_sent, bytes_nr); // TODO: no to jest przeciez zle xd
-    send_message(socket_fd, message, sizeof(message), server_address);
+    mempcpy(message + 21, data + already_sent, bytes_nr);
+    send_message(socket_fd, message, sizeof(message), server_address, prot);
 }
 
 void send_DATA(int socket_fd, struct sockaddr_in server_address, uint64_t ses_id, char *data, int retransmits, uint8_t prot, uint64_t seq_len) {
@@ -170,7 +171,7 @@ void send_DATA(int socket_fd, struct sockaddr_in server_address, uint64_t ses_id
     uint64_t packet_nr = 0;
     while (already_sent < seq_len) {
         uint32_t bytes_nr = min((uint64_t) DATA_PACKET_SIZE, seq_len - already_sent);
-        send_one_DATA_packet(socket_fd, server_address, ses_id, packet_nr, bytes_nr, data, already_sent);
+        send_one_DATA_packet(socket_fd, server_address, ses_id, packet_nr, bytes_nr, data, already_sent, prot);
 
         if (prot == PROT_UDPR) {
             uint8_t type;
