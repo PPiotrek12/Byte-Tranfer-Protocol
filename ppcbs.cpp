@@ -69,7 +69,7 @@ void receive_CONN(int socket_fd, struct sockaddr_in *client_address, uint64_t *s
         socklen_t address_length = (socklen_t) sizeof(client_address);
         ssize_t length = recvfrom(socket_fd, buffer, CONN_LEN, 0, (struct sockaddr *) client_address, &address_length);
         if (length < 0) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) // timeout
+            if (errno == EAGAIN || errno == EWOULDBLOCK) // Timeout.
                 continue;
             syserr("recvfrom");
         }
