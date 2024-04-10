@@ -69,6 +69,7 @@ void send_message(int socket_fd, char *message, ssize_t message_length, struct s
     glob::last_address = address;
     glob::last_prot = prot;
     socklen_t address_length = (socklen_t) sizeof(address);
+    fflush(stdout);
     if (prot == PROT_TCP) {
         ssize_t sent_length = writen(socket_fd, message, message_length);
         if (sent_length < 0)

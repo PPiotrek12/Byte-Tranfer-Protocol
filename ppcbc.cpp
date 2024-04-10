@@ -189,7 +189,7 @@ void send_DATA(int socket_fd, struct sockaddr_in server_address, uint64_t ses_id
 /* ======================================= CLIENT FUNCTIONS ==================================== */
 
 void udp_client(struct sockaddr_in server_address, char *data, uint64_t seq_len, uint8_t prot) {
-    int socket_fd = socket(PF_INET, SOCK_DGRAM, 0);
+    int socket_fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (socket_fd < 0) {
         syserr("socket");
     }
@@ -216,6 +216,72 @@ void udp_client(struct sockaddr_in server_address, char *data, uint64_t seq_len,
     
     receive_RCVD_RJT(socket_fd, server_address, ses_id, retransmit);
 }
+
+/* ============================================================= TCP ===================================================================== */
+
+void send_CONN_tcp(int socket_fd, struct sockaddr_in server_address, uint64_t ses_id, uint64_t seq_len) {
+    static char message[CONN_LEN];
+    message[0] = CONN;
+    memcpy(message + 1, &ses_id, 8);
+    message[9] = PROT_TCP;
+    memcpy(message + 10, &seq_len, 8);
+    send_message(socket_fd, message, sizeof(message), server_address, PROT_TCP);
+}
+
+void receive_CON_ACC_tcp(int socket_fd, uint64_t ses_id) {
+    static char buffer[CONACC_LEN];
+    while (true) {
+        ssize_t length = readn(socket_fd, buffer, CONACC_LEN);
+        if (length < 0) {
+            close(socket_fd);
+            if (errno == EAGAIN || errno == EWOULDBLOCK) // Timeout.
+                fatal("could not receive packet");
+            syserr("readn");
+        }
+        uint64_t res_ses_id;
+        uint8_t  type = buffer[0];
+        memcpy(&res_ses_id, buffer + 1, 8);
+        if (type != CONACC) {
+            close(socket_fd);
+            fatal("invalid packet type");
+        }
+        if (ses_id != res_ses_id) {
+            close(socket_fd);
+            fatal("invalid session id");
+        }
+        if (length != CONRJT_LEN) {
+            close(socket_fd);
+            fatal("invalid packet length");
+        }
+        break;
+    }
+}
+
+void tcp_client(struct sockaddr_in server_address, char *data, uint64_t seq_len) {
+    int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (socket_fd < 0) {
+        syserr("socket");
+    }
+    struct timeval timeout;
+    timeout.tv_sec = MAX_WAIT;
+    timeout.tv_usec = 0;
+    if (setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, (void *)&timeout, sizeof(timeout)))
+        syserr("setsockopt");
+    if (connect(socket_fd, (struct sockaddr *) &server_address, (socklen_t) sizeof(server_address)) < 0)
+        syserr("cannot connect to the server");
+
+    srand(time(NULL));
+    uint64_t ses_id = ((long long)rand() << 32) | rand(); // TODO
+
+    send_CONN_tcp(socket_fd, server_address, ses_id, seq_len);
+
+    receive_CON_ACC_tcp(socket_fd, ses_id);
+
+    // send_DATA(socket_fd, server_address, ses_id, data, retransmit, prot, seq_len);
+    
+    // receive_RCVD_RJT(socket_fd, server_address, ses_id, retransmit);
+}
+
 
 int main(int argc, char *argv[]) {
     if (argc != 4) {
@@ -249,4 +315,6 @@ int main(int argc, char *argv[]) {
     struct sockaddr_in server_address = get_server_address(host, port);
     if (prot == PROT_UDP || prot == PROT_UDPR)
         udp_client(server_address, input, seq_len, prot);
+    else 
+        tcp_client(server_address, input, seq_len);
 }

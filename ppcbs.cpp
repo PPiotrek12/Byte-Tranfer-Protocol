@@ -228,34 +228,88 @@ void udp_server(struct sockaddr_in server_address) {
     }
 }
 
-// void tcp_server(struct sockaddr_in server_address) {
-//     int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
-//     if (socket_fd < 0)
-//         syserr("socket");
-//     struct timeval timeout;
-//     timeout.tv_sec = MAX_WAIT;
-//     timeout.tv_usec = 0;
-//     if (setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, (void *)&timeout, sizeof(timeout)))
-//         syserr("setsockopt");
-//     if (bind(socket_fd, (struct sockaddr *) &server_address, (socklen_t) sizeof(server_address))<0)
-//         syserr("bind");
 
-//     while (true) {
-//         uint8_t prot;
-//         uint64_t seq_len, ses_id;
-//         struct sockaddr_in client_address;
-//         receive_CONN(socket_fd, &client_address, &ses_id, &prot, &seq_len);
-//         send_CONACC(socket_fd, client_address, ses_id);
+/* ============================================================= TCP ===================================================================== */
+const int QUEUE_LENGTH = 10;
 
-//         static char data[DATA_MAX_SIZE];
-//         if (receive_DATA(socket_fd, ses_id, prot, seq_len, data))
-//             continue; // Next client.
-//         printf("%s", data);
-//         fflush(stdout);
+void receive_CONN_tcp(int client_fd, uint64_t *ses_id, uint8_t *prot, uint64_t *seq_len) {
+    static char buffer[CONN_LEN];
+    while (true) {
+        ssize_t length = readn(client_fd, buffer, CONN_LEN);
+        if (length < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) // Timeout.
+                continue;
+            close(client_fd);
+            syserr("readn");
+        }
+        uint8_t res_type = buffer[0];
+        uint8_t res_prot = buffer[9];
+        if (length != CONN_LEN) {
+            close(client_fd);
+            err("invalid packet length");
+            continue; // Next client.
+        }
+        if (res_type != CONN) {
+            close(client_fd);
+            err("invalid packet type");
+            continue; // Next client.
+        }
+        if (res_prot != PROT_TCP) {
+            close(client_fd);
+            err("invalid protocol");
+            continue; // Next client.
+        }
+        break;
+    }
+    // Here we have received correct CONN packet.
+    memcpy(ses_id, buffer + 1, 8);
+    *prot = buffer[9];
+    memcpy(seq_len, buffer + 10, 8);
+}
 
-//         send_RCVD(socket_fd, client_address, ses_id);
-//     }
-// }
+void send_CONACC_tcp(int client_fd, struct sockaddr_in client_address, uint64_t ses_id) {
+    static char message[CONACC_LEN];
+    message[0] = CONACC;
+    memcpy(message + 1, &ses_id, 8);
+    send_message(client_fd, message, sizeof(message), client_address, PROT_TCP);
+}
+
+void tcp_server(struct sockaddr_in server_address) {
+    signal(SIGPIPE, SIG_IGN);
+    int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
+    if (socket_fd < 0)
+        syserr("socket");
+    struct timeval timeout;
+    timeout.tv_sec = MAX_WAIT;
+    timeout.tv_usec = 0;
+    if (setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, (void *)&timeout, sizeof(timeout)))
+        syserr("setsockopt");
+    if (bind(socket_fd, (struct sockaddr *) &server_address, (socklen_t) sizeof(server_address))<0)
+        syserr("bind");
+    if (listen(socket_fd, QUEUE_LENGTH) < 0)
+        syserr("listen");
+    while (true) {
+        struct sockaddr_in client_address;
+        socklen_t address_length = (socklen_t) sizeof(client_address);
+        int client_fd = accept(socket_fd, (struct sockaddr *) &client_address, &address_length);
+        if (client_fd < 0)
+            syserr("accept");
+
+        uint8_t prot;
+        uint64_t seq_len, ses_id;
+        receive_CONN_tcp(client_fd, &ses_id, &prot, &seq_len);
+        
+        send_CONACC_tcp(client_fd, client_address, ses_id);
+
+        // static char data[DATA_MAX_SIZE];
+        // if (receive_DATA(socket_fd, ses_id, prot, seq_len, data))
+        //     continue; // Next client.
+        // printf("%s", data);
+        // fflush(stdout);
+
+        // send_RCVD(socket_fd, client_address, ses_id);
+    }
+}
 
 int main(int argc, char *argv[]) {
     if (argc != 3) {
@@ -277,6 +331,6 @@ int main(int argc, char *argv[]) {
 
     if (prot == PROT_UDP)
         udp_server(server_address);
-    // else
-    //     tcp_server(server_address);
+    else
+        tcp_server(server_address);
 }
