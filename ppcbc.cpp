@@ -257,6 +257,17 @@ void receive_CON_ACC_tcp(int socket_fd, uint64_t ses_id) {
     }
 }
 
+void send_DATA_tcp(int socket_fd, struct sockaddr_in server_address, uint64_t ses_id, char *data, uint64_t seq_len) {
+    uint64_t already_sent = 0;
+    uint64_t packet_nr = 0;
+    while (already_sent < seq_len) {
+        uint32_t bytes_nr = min((uint64_t) DATA_PACKET_SIZE, seq_len - already_sent);
+        send_one_DATA_packet(socket_fd, server_address, ses_id, packet_nr, bytes_nr, data, already_sent, PROT_TCP);
+        already_sent += bytes_nr;
+        packet_nr++;
+    }
+}
+
 void tcp_client(struct sockaddr_in server_address, char *data, uint64_t seq_len) {
     int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (socket_fd < 0) {
@@ -276,9 +287,7 @@ void tcp_client(struct sockaddr_in server_address, char *data, uint64_t seq_len)
     send_CONN_tcp(socket_fd, server_address, ses_id, seq_len);
 
     receive_CON_ACC_tcp(socket_fd, ses_id);
-
-    // send_DATA(socket_fd, server_address, ses_id, data, retransmit, prot, seq_len);
-    
+    send_DATA_tcp(socket_fd, server_address, ses_id, data, seq_len);
     // receive_RCVD_RJT(socket_fd, server_address, ses_id, retransmit);
 }
 
