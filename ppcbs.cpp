@@ -95,7 +95,7 @@ void receive_CONN(int socket_fd, struct sockaddr_in *client_address, uint64_t *s
     memcpy(seq_len, buffer + 10, 8);
 }
 
-// Returns: 0 - correct; 1 - next client (close connection); 2 - ignore packet.
+// Returns: 0-correct; 1-next client (close connection); 2-ignore packet (or also close in TCP).
 int check_received_DATA_packet(int socket_fd, struct sockaddr_in res_address, uint64_t ses_id, 
                                 uint64_t seq_len, ssize_t read_length,  uint64_t already_read, 
                                 uint64_t last_packet_nr, uint8_t res_type, uint64_t res_ses_id,
@@ -271,54 +271,41 @@ void send_CONACC_tcp(int client_fd, struct sockaddr_in client_address, uint64_t 
     send_message(client_fd, message, sizeof(message), client_address, PROT_TCP);
 }
 
-// Returns 1 if there is need to close connection.
-int receive_one_DATA_packet_tcp(int client_fd, uint64_t last_packet_nr,
-                            uint64_t seq_len, char *buffer, uint64_t already_read,
-                            uint64_t ses_id, uint64_t *res_packet_nr, uint32_t *res_bytes_nr) {
-    ssize_t length1 = readn(client_fd, buffer, MIN_DATA_LEN - 1); // Reading packet header.
-    if (length1 < 0) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) { // Timeout.
-            close(client_fd);
-            err("could not receive packet");
-            return 1; // Next client.
-        }
-        syserr("readn");
-    }
-    uint64_t res_ses_id;
-    uint8_t res_type = buffer[0];
-    memcpy(&res_ses_id, buffer + 1, 8);
-    memcpy(res_packet_nr, buffer + 9, 8);
-    memcpy(res_bytes_nr, buffer + 17, 4);
-
-    ssize_t length2 = readn(client_fd, buffer, *res_bytes_nr); // Reading data.
-    if (length2 < 0) {
-        if (errno == EAGAIN || errno == EWOULDBLOCK) { // Timeout.
-            close(client_fd);
-            err("could not receive packet");
-            return 1; // Next client.
-        }   
-        syserr("readn");
-    }
-    struct sockaddr_in null;
-    int res = check_received_DATA_packet(client_fd, null, ses_id, seq_len, length1 + length2,
-                                            already_read, last_packet_nr, res_type, res_ses_id,
-                                            *res_packet_nr, *res_bytes_nr, PROT_TCP);
-    if (res == 1 || res == 2)
-        return 1;
-    return 0;
-}
 
 // Returns 1 if there is need to close connection.
 int receive_DATA_tcp(int client_fd, uint64_t ses_id, uint64_t seq_len, char *data) {
     uint64_t already_read = 0, last_packet_nr = -1;
     while (already_read < seq_len) {
-        // Receiving packet.
         static char buffer[DATA_MAX_SIZE + MIN_DATA_LEN];
-        uint64_t res_packet_nr;
+        uint64_t res_ses_id, res_packet_nr;
         uint32_t res_bytes_nr;
+        uint8_t res_type;
 
-        if (receive_one_DATA_packet_tcp(client_fd, last_packet_nr, seq_len, buffer, 
-                                        already_read, ses_id, &res_packet_nr, &res_bytes_nr))
+        ssize_t length1 = readn(client_fd, buffer, MIN_DATA_LEN - 1); // Reading packet header.
+        if (length1 < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) { // Timeout.
+                err("could not receive packet");
+                return 1; // Next client.
+            }
+            syserr("readn");
+        }
+        res_type = buffer[0];
+        memcpy(&res_ses_id, buffer + 1, 8);
+        memcpy(&res_packet_nr, buffer + 9, 8);
+        memcpy(&res_bytes_nr, buffer + 17, 4);
+        ssize_t length2 = readn(client_fd, buffer, res_bytes_nr); // Reading data.
+        if (length2 < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) { // Timeout.
+                err("could not receive packet");
+                return 1; // Next client.
+            }   
+            syserr("readn");
+        }
+        struct sockaddr_in null;
+        int res = check_received_DATA_packet(client_fd, null, ses_id, seq_len, length1 + length2,
+                                                already_read, last_packet_nr, res_type, res_ses_id,
+                                                res_packet_nr, res_bytes_nr, PROT_TCP);
+        if (res == 1 || res == 2)
             return 1;
         // Here we have received correct DATA packet.
         memcpy(data + already_read, buffer, res_bytes_nr);
@@ -355,7 +342,6 @@ void tcp_server(struct sockaddr_in server_address) {
             close(client_fd);
             continue;
         }
-        //sleep(4);
         send_CONACC_tcp(client_fd, client_address, ses_id);
 
         static char data[DATA_MAX_SIZE];
