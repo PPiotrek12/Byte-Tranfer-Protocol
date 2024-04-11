@@ -22,7 +22,7 @@ using namespace std;
 const int DATA_MAX_SIZE = 64000;
 
 
-/* ======================================= SEND FUNCTIONS ====================================== */
+/* ==================================== COMMON FUNCTIONS ======================================= */
 
 void send_CONACC(int socket_fd, struct sockaddr_in client_address, uint64_t ses_id, uint8_t prot) {
     static char message[CONACC_LEN];
@@ -58,41 +58,6 @@ void send_ACC(int socket_fd, struct sockaddr_in client_address, uint64_t ses_id,
     memcpy(message + 1, &ses_id, 8);
     memcpy(message + 9, &packet_nr, 8);
     send_message(socket_fd, message, sizeof(message), client_address, prot);
-}
-
-
-/* ==================================== RECEIVE FUNCTIONS ====================================== */
-
-void receive_CONN(int socket_fd, struct sockaddr_in *client_address, uint64_t *ses_id, uint8_t *prot, uint64_t *seq_len) {
-    static char buffer[CONN_LEN];
-    while (true) {
-        socklen_t address_length = (socklen_t) sizeof(client_address);
-        ssize_t length = recvfrom(socket_fd, buffer, CONN_LEN, 0, (struct sockaddr *) client_address, &address_length);
-        if (length < 0) {
-            if (errno == EAGAIN || errno == EWOULDBLOCK) // Timeout.
-                continue;
-            syserr("recvfrom");
-        }
-        uint8_t res_type = buffer[0];
-        uint8_t res_prot = buffer[9];
-        if (length != CONN_LEN) {
-            err("invalid packet length");
-            continue; // Next client.
-        }
-        if (res_type != CONN) {
-            err("invalid packet type");
-            continue; // Next client.
-        }
-        if (res_prot != PROT_UDP && res_prot != PROT_UDPR) {
-            err("invalid protocol");
-            continue; // Next client.
-        }
-        break;
-    }
-    // Here we have received correct CONN packet.
-    memcpy(ses_id, buffer + 1, 8);
-    *prot = buffer[9];
-    memcpy(seq_len, buffer + 10, 8);
 }
 
 // Returns: 0-correct; 1-next client (close connection); 2-ignore packet (or also close in TCP).
@@ -132,6 +97,41 @@ int check_received_DATA_packet(int socket_fd, struct sockaddr_in res_address, ui
         return 1; // Next client.
     }
     return 0;
+}
+
+
+/* ======================================= UDP FUNCTIONS ======================================= */
+
+void receive_CONN_udp(int socket_fd, struct sockaddr_in *client_address, uint64_t *ses_id, uint8_t *prot, uint64_t *seq_len) {
+    static char buffer[CONN_LEN];
+    while (true) {
+        socklen_t address_length = (socklen_t) sizeof(client_address);
+        ssize_t length = recvfrom(socket_fd, buffer, CONN_LEN, 0, (struct sockaddr *) client_address, &address_length);
+        if (length < 0) {
+            if (errno == EAGAIN || errno == EWOULDBLOCK) // Timeout.
+                continue;
+            syserr("recvfrom");
+        }
+        uint8_t res_type = buffer[0];
+        uint8_t res_prot = buffer[9];
+        if (length != CONN_LEN) {
+            err("invalid packet length");
+            continue; // Next client.
+        }
+        if (res_type != CONN) {
+            err("invalid packet type");
+            continue; // Next client.
+        }
+        if (res_prot != PROT_UDP && res_prot != PROT_UDPR) {
+            err("invalid protocol");
+            continue; // Next client.
+        }
+        break;
+    }
+    // Here we have received correct CONN packet.
+    memcpy(ses_id, buffer + 1, 8);
+    *prot = buffer[9];
+    memcpy(seq_len, buffer + 10, 8);
 }
 
 // Returns 1 if there is need to close connection.
@@ -174,7 +174,7 @@ int receive_one_DATA_packet(int socket_fd, struct sockaddr_in *res_address, uint
 }
 
 // Returns 1 if there is need to close connection.
-int receive_DATA(int socket_fd, uint64_t ses_id, uint8_t prot, uint64_t seq_len, char *data) {
+int receive_DATA_udp(int socket_fd, uint64_t ses_id, uint8_t prot, uint64_t seq_len, char *data) {
     uint64_t already_read = 0, last_packet_nr = -1;
     while (already_read < seq_len) {
         // Receiving packet.
@@ -196,9 +196,6 @@ int receive_DATA(int socket_fd, uint64_t ses_id, uint8_t prot, uint64_t seq_len,
     return 0;
 }
 
-
-/* ======================================= SERVER FUNCTIONS ==================================== */
-
 void udp_server(struct sockaddr_in server_address) {
     int socket_fd = socket(PF_INET, SOCK_DGRAM, 0);
     if (socket_fd < 0)
@@ -215,11 +212,11 @@ void udp_server(struct sockaddr_in server_address) {
         uint8_t prot;
         uint64_t seq_len, ses_id;
         struct sockaddr_in client_address;
-        receive_CONN(socket_fd, &client_address, &ses_id, &prot, &seq_len);
+        receive_CONN_udp(socket_fd, &client_address, &ses_id, &prot, &seq_len);
         send_CONACC(socket_fd, client_address, ses_id, prot);
 
         static char data[DATA_MAX_SIZE];
-        if (receive_DATA(socket_fd, ses_id, prot, seq_len, data))
+        if (receive_DATA_udp(socket_fd, ses_id, prot, seq_len, data))
             continue; // Next client.
         printf("%s", data);
         fflush(stdout);
@@ -229,7 +226,8 @@ void udp_server(struct sockaddr_in server_address) {
 }
 
 
-/* ============================================================= TCP ===================================================================== */
+/* ===================================== TCP FUNCTIONS ========================================= */
+
 const int QUEUE_LENGTH = 10;
 
 // Returns 1 if there is need to close connection.
@@ -254,7 +252,7 @@ int receive_CONN_tcp(int client_fd, uint64_t *ses_id, uint8_t *prot, uint64_t *s
         return 1; // Next client.
     }
     if (res_prot != PROT_TCP) {
-        err("invalid protocol");
+        err("invalid protocol%d", *prot);
         return 1; // Next client.
     }
     // Here we have received correct CONN packet.
@@ -263,14 +261,6 @@ int receive_CONN_tcp(int client_fd, uint64_t *ses_id, uint8_t *prot, uint64_t *s
     memcpy(seq_len, buffer + 10, 8);
     return 0;
 }
-
-void send_CONACC_tcp(int client_fd, struct sockaddr_in client_address, uint64_t ses_id) {
-    static char message[CONACC_LEN];
-    message[0] = CONACC;
-    memcpy(message + 1, &ses_id, 8);
-    send_message(client_fd, message, sizeof(message), client_address, PROT_TCP);
-}
-
 
 // Returns 1 if there is need to close connection.
 int receive_DATA_tcp(int client_fd, uint64_t ses_id, uint64_t seq_len, char *data) {
@@ -342,7 +332,7 @@ void tcp_server(struct sockaddr_in server_address) {
             close(client_fd);
             continue;
         }
-        send_CONACC_tcp(client_fd, client_address, ses_id);
+        send_CONACC(client_fd, client_address, ses_id, PROT_TCP);
 
         static char data[DATA_MAX_SIZE];
         if (receive_DATA_tcp(client_fd, ses_id, seq_len, data)) {
@@ -355,6 +345,9 @@ void tcp_server(struct sockaddr_in server_address) {
         send_RCVD(client_fd, client_address, ses_id, PROT_TCP);
     }
 }
+
+
+/* ===================================== MAIN FUNCTION ========================================= */
 
 int main(int argc, char *argv[]) {
     if (argc != 3) {
