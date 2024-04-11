@@ -370,7 +370,7 @@ void tcp_server(struct sockaddr_in server_address) {
         printf("%s", data);
         fflush(stdout);
 
-        // send_RCVD(socket_fd, client_address, ses_id);
+        send_RCVD(client_fd, client_address, ses_id, PROT_TCP);
     }
 }
 
