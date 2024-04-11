@@ -207,8 +207,10 @@ void receive_CON_ACC_tcp(int socket_fd, uint64_t ses_id) {
         ssize_t length = readn(socket_fd, buffer, CONACC_LEN);
         if (length < 0) {
             close(socket_fd);
-            if (errno == EAGAIN || errno == EWOULDBLOCK)  // Timeout.
+            if (errno == EAGAIN || errno == EWOULDBLOCK) { // Timeout.
+                close(socket_fd);
                 fatal("could not receive packet");
+            }
             syserr("readn");
         }
         uint64_t res_ses_id;
@@ -236,8 +238,10 @@ void receive_RCVD_RJT_tcp(int socket_fd, uint64_t ses_id) {
         ssize_t length1 = readn(socket_fd, buffer, RCVD_LEN);
         if (length1 < 0) {
             close(socket_fd);
-            if (errno == EAGAIN || errno == EWOULDBLOCK)  // Timeout.
+            if (errno == EAGAIN || errno == EWOULDBLOCK) { // Timeout.
+                close(socket_fd);
                 fatal("could not receive packet");
+            }
             syserr("readn");
         }
         uint8_t res_type = buffer[0];

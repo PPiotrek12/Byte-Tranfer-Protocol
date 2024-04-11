@@ -51,6 +51,7 @@ void send_RJT(int socket_fd, struct sockaddr_in client_address, uint64_t ses_id,
     memcpy(message + 9, &packet_nr, 8);
     send_message(socket_fd, message, sizeof(message), client_address, prot);
 }
+
 void send_ACC(int socket_fd, struct sockaddr_in client_address, uint64_t ses_id, uint64_t packet_nr,
               uint8_t prot) {
     static char message[ACC_LEN];
