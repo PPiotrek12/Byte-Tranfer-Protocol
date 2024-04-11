@@ -25,6 +25,8 @@ const uint8_t PROT_TCP = 1;
 const uint8_t PROT_UDP = 2;
 const uint8_t PROT_UDPR = 3;
 
+const uint64_t DATA_PACKET_SIZE = 10; // TODO
+
 uint16_t read_port(char const *string);
 struct sockaddr_in get_server_address(char const *host, uint16_t port);
 void send_message(int socket_fd, char *message, ssize_t message_length, struct sockaddr_in server_address, uint8_t prot);

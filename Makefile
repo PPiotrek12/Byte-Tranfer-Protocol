@@ -3,10 +3,10 @@ CFLAGS=-c -Wall -Wextra -O3 -std=c++17
 
 all: ppcbs ppcbc
 
-ppcbs: ppcbs.o common.o  protconst.h err.o 
+ppcbs: ppcbs.o common.o protconst.h err.o
 	$(CC) $(LFLAGS) -o $@ $^
 
-ppcbc: ppcbc.o common.o  protconst.h err.o
+ppcbc: ppcbc.o common.o  protconst.h err.o tcp_client_lib.o udp_client_lib.o
 	$(CC) $(LFLAGS) -o $@ $^
 
 ppcbs.o: ppcbs.cpp common.h err.h
@@ -14,6 +14,13 @@ ppcbs.o: ppcbs.cpp common.h err.h
 
 ppcbc.o: ppcbc.cpp common.h err.h
 	$(CC) $(CFLAGS) -c -o $@ $<
+
+tcp_client_lib.o: tcp_client_lib.cpp tcp_client_lib.h common.h err.h protconst.h
+	$(CC) $(CFLAGS) -c -o $@ $<
+
+udp_client_lib.o: udp_client_lib.cpp udp_client_lib.h common.h err.h protconst.h
+	$(CC) $(CFLAGS) -c -o $@ $<
+
 
 common.o: common.cpp common.h err.h protconst.h
 	$(CC) $(CFLAGS) -c -o $@ $<
