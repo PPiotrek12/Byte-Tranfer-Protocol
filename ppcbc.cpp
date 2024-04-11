@@ -337,7 +337,7 @@ void tcp_client(struct sockaddr_in server_address, char *data, uint64_t seq_len)
 
     srand(time(NULL));
     uint64_t ses_id = ((long long)rand() << 32) | rand(); // TODO
-
+    
     send_CONN_tcp(socket_fd, server_address, ses_id, seq_len);
 
     receive_CON_ACC_tcp(socket_fd, ses_id);
