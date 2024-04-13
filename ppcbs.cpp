@@ -218,6 +218,7 @@ void udp_server(struct sockaddr_in server_address) {
 
         send_RCVD(socket_fd, client_address, ses_id, prot);
     }
+    close(socket_fd);
 }
 
 /* ===================================== TCP FUNCTIONS ========================================= */
@@ -333,15 +334,16 @@ void tcp_server(struct sockaddr_in server_address) {
         fflush(stdout);
 
         send_RCVD(client_fd, client_address, ses_id, PROT_TCP);
+        close(client_fd);
     }
+    close(socket_fd);
 }
 
 /* ===================================== MAIN FUNCTION ========================================= */
 
 int main(int argc, char *argv[]) {
-    if (argc != 3) {
+    if (argc != 3)
         fatal("usage: %s <protocol> <port>", argv[0]);
-    }
     string protocol = argv[1];
     uint16_t port = read_port(argv[2]);
     uint8_t prot = 0;

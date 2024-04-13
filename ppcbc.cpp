@@ -197,6 +197,7 @@ void udp_client(struct sockaddr_in server_address, char *data, uint64_t seq_len,
     send_DATA_udp(socket_fd, server_address, ses_id, data, retransmit, prot, seq_len);
 
     receive_RCVD_RJT_udp(socket_fd, server_address, ses_id, retransmit);
+    close(socket_fd);
 }
 
 /* ===================================== TCP FUNCTIONS ========================================= */
@@ -305,8 +306,7 @@ void tcp_client(struct sockaddr_in server_address, char *data, uint64_t seq_len)
     timeout.tv_usec = 0;
     if (setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, (void *)&timeout, sizeof(timeout)))
         syserr("setsockopt");
-    if (connect(socket_fd, (struct sockaddr *)&server_address, (socklen_t)sizeof(server_address)) <
-        0)
+    if (connect(socket_fd, (struct sockaddr *)&server_address, (socklen_t)sizeof(server_address))<0)
         syserr("cannot connect to the server");
 
     srand(time(NULL));
@@ -317,14 +317,14 @@ void tcp_client(struct sockaddr_in server_address, char *data, uint64_t seq_len)
     receive_CON_ACC_tcp(socket_fd, ses_id);
     send_DATA_tcp(socket_fd, server_address, ses_id, data, seq_len);
     receive_RCVD_RJT_tcp(socket_fd, ses_id);
+    close(socket_fd);
 }
 
 /* ===================================== MAIN FUNCTION ========================================= */
 
 int main(int argc, char *argv[]) {
-    if (argc != 4) {
+    if (argc != 4)
         fatal("usage: %s <protocol> <host> <port>", argv[0]);
-    }
     string protocol = argv[1];
     const char *host = argv[2];
     uint16_t port = read_port(argv[3]);
