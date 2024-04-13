@@ -10,6 +10,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <endian.h>
 
 #include <ctime>
 #include <string>
@@ -31,6 +32,7 @@ void send_CONN(int socket_fd, struct sockaddr_in server_address, uint64_t ses_id
     message[0] = CONN;
     memcpy(message + 1, &ses_id, 8);
     message[9] = prot;
+    seq_len = htobe64(seq_len);
     memcpy(message + 10, &seq_len, 8);
     send_message(socket_fd, message, sizeof(message), server_address, prot);
 }
@@ -41,8 +43,10 @@ void send_one_DATA_packet(int socket_fd, struct sockaddr_in server_address, uint
     char message[DATA_PACKET_SIZE + 21];
     message[0] = DATA;
     memcpy(message + 1, &ses_id, 8);
+    packet_nr = htobe64(packet_nr);
     memcpy(message + 9, &packet_nr, 8);
-    memcpy(message + 17, &bytes_nr, 4);
+    uint32_t bytes_nr_n = htobe32(bytes_nr);
+    memcpy(message + 17, &bytes_nr_n, 4);
     mempcpy(message + 21, data + already_sent, bytes_nr);
     send_message(socket_fd, message, sizeof(message), server_address, prot);
 }
@@ -99,6 +103,7 @@ void receive_ACC_RJT_udp(int socket_fd, struct sockaddr_in server_address, uint8
         *type = buffer[0];
         memcpy(&res_ses_id, buffer + 1, 8);
         memcpy(&res_packet_nr, buffer + 9, 8);
+        res_packet_nr = be64toh(res_packet_nr);
         if (ses_id != res_ses_id) fatal("invalid session id");
         if (length != ACC_LEN) fatal("invalid packet length");
         if (packet_nr != res_packet_nr) {
@@ -142,6 +147,7 @@ void receive_RCVD_RJT_udp(int socket_fd, struct sockaddr_in server_address, uint
             if (length < RJT_LEN) fatal("invalid packet length");
             uint64_t res_packet_nr;
             memcpy(&res_packet_nr, buffer + 9, 8);
+            res_packet_nr = be64toh(res_packet_nr);
             fatal("packet number %ld was rejected", res_packet_nr);
         } else if (res_type == CONACC || res_type == ACC)
             continue;  // Ingore packet.
@@ -273,6 +279,7 @@ void receive_RCVD_RJT_tcp(int socket_fd, uint64_t ses_id) {
             }
             uint64_t res_packet_nr;
             memcpy(&res_packet_nr, buffer, 8);
+            res_packet_nr = be64toh(res_packet_nr);
             close(socket_fd);
             fatal("packet number %ld was rejected", res_packet_nr);
         } else {

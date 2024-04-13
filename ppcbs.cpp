@@ -10,6 +10,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <endian.h>
 
 #include <string>
 
@@ -49,6 +50,7 @@ void send_RJT(int socket_fd, struct sockaddr_in client_address, uint64_t ses_id,
     message[0] = RJT;
     memcpy(message + 1, &ses_id, 8);
     memcpy(message + 9, &packet_nr, 8);
+    packet_nr = htobe64(packet_nr);
     send_message(socket_fd, message, sizeof(message), client_address, prot);
 }
 
@@ -57,6 +59,7 @@ void send_ACC(int socket_fd, struct sockaddr_in client_address, uint64_t ses_id,
     static char message[ACC_LEN];
     message[0] = ACC;
     memcpy(message + 1, &ses_id, 8);
+    packet_nr = htobe64(packet_nr);
     memcpy(message + 9, &packet_nr, 8);
     send_message(socket_fd, message, sizeof(message), client_address, prot);
 }
@@ -131,10 +134,11 @@ void receive_CONN_udp(int socket_fd, struct sockaddr_in *client_address, uint64_
     memcpy(ses_id, buffer + 1, 8);
     *prot = buffer[9];
     memcpy(seq_len, buffer + 10, 8);
+    *seq_len = be64toh(*seq_len);
 }
 
 // Returns 1 if there is need to close connection.
-int receive_one_DATA_packet(int socket_fd, struct sockaddr_in *res_address, uint64_t last_packet_nr,
+int receive_one_DATA_packet_udp(int socket_fd, struct sockaddr_in *res_address, uint64_t last_packet_nr,
                             uint64_t seq_len, char *buffer, uint8_t prot, uint64_t already_read,
                             uint64_t ses_id, uint64_t *res_packet_nr, uint32_t *res_bytes_nr) {
     int retransmits = 0;
@@ -160,7 +164,9 @@ int receive_one_DATA_packet(int socket_fd, struct sockaddr_in *res_address, uint
         uint8_t res_type = buffer[0];
         memcpy(&res_ses_id, buffer + 1, 8);
         memcpy(res_packet_nr, buffer + 9, 8);
+        *res_packet_nr = be64toh(*res_packet_nr);
         memcpy(res_bytes_nr, buffer + 17, 4);
+        *res_bytes_nr = be32toh(*res_bytes_nr);
         int res = check_received_DATA_packet(socket_fd, *res_address, ses_id, seq_len, length,
                                              already_read, last_packet_nr, res_type, res_ses_id,
                                              *res_packet_nr, *res_bytes_nr, prot);
@@ -181,7 +187,7 @@ int receive_DATA_udp(int socket_fd, uint64_t ses_id, uint8_t prot, uint64_t seq_
         uint64_t res_packet_nr;
         uint32_t res_bytes_nr;
 
-        if (receive_one_DATA_packet(socket_fd, &res_address, last_packet_nr, seq_len, buffer, prot,
+        if (receive_one_DATA_packet_udp(socket_fd, &res_address, last_packet_nr, seq_len, buffer, prot,
                                     already_read, ses_id, &res_packet_nr, &res_bytes_nr))
             return 1;
         // Here we have received correct DATA packet.
@@ -211,10 +217,11 @@ void udp_server(struct sockaddr_in server_address) {
         receive_CONN_udp(socket_fd, &client_address, &ses_id, &prot, &seq_len);
         send_CONACC(socket_fd, client_address, ses_id, prot);
 
-        static char data[DATA_MAX_SIZE];
+        char *data = (char *)malloc(seq_len);
         if (receive_DATA_udp(socket_fd, ses_id, prot, seq_len, data)) continue;  // Next client.
         printf("%s", data);
         fflush(stdout);
+        free(data);
 
         send_RCVD(socket_fd, client_address, ses_id, prot);
     }
@@ -254,6 +261,7 @@ int receive_CONN_tcp(int client_fd, uint64_t *ses_id, uint8_t *prot, uint64_t *s
     memcpy(ses_id, buffer + 1, 8);
     *prot = buffer[9];
     memcpy(seq_len, buffer + 10, 8);
+    *seq_len = be64toh(*seq_len);
     return 0;
 }
 
@@ -277,7 +285,9 @@ int receive_DATA_tcp(int client_fd, uint64_t ses_id, uint64_t seq_len, char *dat
         res_type = buffer[0];
         memcpy(&res_ses_id, buffer + 1, 8);
         memcpy(&res_packet_nr, buffer + 9, 8);
+        res_packet_nr = be64toh(res_packet_nr);
         memcpy(&res_bytes_nr, buffer + 17, 4);
+        res_bytes_nr = be32toh(res_bytes_nr);
         ssize_t length2 = readn(client_fd, buffer, res_bytes_nr);  // Reading data.
         if (length2 < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {  // Timeout.
@@ -325,13 +335,14 @@ void tcp_server(struct sockaddr_in server_address) {
         }
         send_CONACC(client_fd, client_address, ses_id, PROT_TCP);
 
-        static char data[DATA_MAX_SIZE];
+        char *data = (char *)malloc(seq_len);
         if (receive_DATA_tcp(client_fd, ses_id, seq_len, data)) {
             close(client_fd);
             continue;
         }
         printf("%s", data);
         fflush(stdout);
+        free(data);
 
         send_RCVD(client_fd, client_address, ses_id, PROT_TCP);
         close(client_fd);
