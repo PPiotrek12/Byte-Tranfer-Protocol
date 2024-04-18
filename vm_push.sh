@@ -1,5 +1,5 @@
 cd ..
-zip -r 1zad.zip 1zad > /dev/null
+zip -r 1zad.zip 1zad -x "1zad/input" -x "1zad/input1GB" -x "1zad/input100MB" -x "1zad/input10MB" > /dev/null
 cd vagrant
 vagrant scp ../1zad.zip vm1:~/ > /dev/null
 vagrant scp ../1zad.zip vm2:~/ > /dev/null
