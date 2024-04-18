@@ -49,8 +49,8 @@ void send_RJT(int socket_fd, struct sockaddr_in client_address, uint64_t ses_id,
     static char message[RJT_LEN];
     message[0] = RJT;
     memcpy(message + 1, &ses_id, 8);
-    memcpy(message + 9, &packet_nr, 8);
     packet_nr = htobe64(packet_nr);
+    memcpy(message + 9, &packet_nr, 8);
     send_message(socket_fd, message, sizeof(message), client_address, prot);
 }
 
@@ -348,6 +348,7 @@ void tcp_server(struct sockaddr_in server_address) {
 
         send_RCVD(client_fd, client_address, ses_id, PROT_TCP);
         close(client_fd);
+        break; // TODO
     }
     close(socket_fd);
 }

@@ -1,0 +1,17 @@
+TODO: 
+
+
+Watpliwosci:
+- serwer gdy wysle RJT, to gdy klient bedzie dalej wysylal, to bedziemy ciagle walili bledami
+
+
+
+
+
+Czy tak powinno byc:
+- w UDP czasem serwer nie czyta wszystkiego (tzn jakis pakiet mu wylatuje, nie odbiera go), choc w wiresharku jest ten pakiet
+
+
+
+Pomysly na testy:
+- 

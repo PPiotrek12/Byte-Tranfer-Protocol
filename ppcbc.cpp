@@ -23,7 +23,7 @@
 
 using namespace std;
 
-const uint64_t DATA_PACKET_SIZE = 10;  // TODO
+const uint64_t DATA_PACKET_SIZE = 64000;  // TODO
 
 /* ==================================== COMMON FUNCTIONS ======================================= */
 
