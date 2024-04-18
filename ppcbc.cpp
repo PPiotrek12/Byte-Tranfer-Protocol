@@ -11,6 +11,7 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <endian.h>
+#include <random>
 
 #include <ctime>
 #include <string>
@@ -49,6 +50,13 @@ void send_one_DATA_packet(int socket_fd, struct sockaddr_in server_address, uint
     memcpy(message + 17, &bytes_nr_n, 4);
     mempcpy(message + 21, data + already_sent, bytes_nr);
     send_message(socket_fd, message, sizeof(message), server_address, prot);
+}
+
+uint64_t get_random() {
+    random_device rd;
+    mt19937_64 eng(rd());
+    uniform_int_distribution<long long> distr(0, ULLONG_MAX/2ULL);
+    return distr(eng);
 }
 
 /* ======================================= UDP FUNCTIONS ======================================= */
@@ -189,7 +197,7 @@ void udp_client(struct sockaddr_in server_address, char *data, uint64_t seq_len,
         syserr("setsockopt");
 
     srand(time(NULL));
-    uint64_t ses_id = ((long long)rand() << 32) | rand();  // TODO
+    uint64_t ses_id = get_random();
 
     send_CONN(socket_fd, server_address, ses_id, prot, seq_len);
 
@@ -317,7 +325,7 @@ void tcp_client(struct sockaddr_in server_address, char *data, uint64_t seq_len)
         syserr("cannot connect to the server");
 
     srand(time(NULL));
-    uint64_t ses_id = ((long long)rand() << 32) | rand();  // TODO
+    uint64_t ses_id = get_random();
 
     send_CONN(socket_fd, server_address, ses_id, PROT_TCP, seq_len);
 
@@ -352,8 +360,11 @@ int main(int argc, char *argv[]) {
         act = getc(stdin);
         vec_input.push_back(act);
     } while (act != EOF);
+    vec_input.pop_back();
     u_int64_t seq_len = vec_input.size();
-    char input[seq_len];
+    char *input = (char *)malloc(seq_len);
+    if (input == NULL) syserr("malloc");
+
     for (uint64_t i = 0; i < seq_len; i++) input[i] = vec_input[i];
 
     struct sockaddr_in server_address = get_server_address(host, port);
@@ -361,4 +372,5 @@ int main(int argc, char *argv[]) {
         udp_client(server_address, input, seq_len, prot);
     else
         tcp_client(server_address, input, seq_len);
+    free(input);
 }

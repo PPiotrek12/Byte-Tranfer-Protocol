@@ -218,6 +218,7 @@ void udp_server(struct sockaddr_in server_address) {
         send_CONACC(socket_fd, client_address, ses_id, prot);
 
         char *data = (char *)malloc(seq_len);
+        if (data == NULL) syserr("malloc");
         if (receive_DATA_udp(socket_fd, ses_id, prot, seq_len, data)) continue;  // Next client.
         printf("%s", data);
         fflush(stdout);
@@ -336,6 +337,7 @@ void tcp_server(struct sockaddr_in server_address) {
         send_CONACC(client_fd, client_address, ses_id, PROT_TCP);
 
         char *data = (char *)malloc(seq_len);
+        if (data == NULL) syserr("malloc");
         if (receive_DATA_tcp(client_fd, ses_id, seq_len, data)) {
             close(client_fd);
             continue;

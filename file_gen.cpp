@@ -1,12 +1,12 @@
 #include <bits/stdc++.h>
+#include <random>
+#include <ctime>
 using namespace std;
-const int SIZE = 2000;
-char buffer[SIZE];
+const long long SIZE = 1000000;
 int main() {
-    int n = 250;
-    char a = 'a';
-    for (int i = 0; i < 249; i++) {
-        memcpy(buffer + 4 * i, &i, 4);
+    srand(time(NULL));
+    for (long long i = 0; i < SIZE; i++) {
+        char c = rand() % 255;
+        cout.write(&c, 1);
     }
-    cout.write(buffer, SIZE);
 }
