@@ -62,14 +62,14 @@ ssize_t writen(int fd, char *vptr, size_t n){
     return n;
 }
 
-void send_message(int socket_fd, char *message, ssize_t message_length, struct sockaddr_in address, uint8_t prot) {
+void send_message(int socket_fd, char *message, ssize_t message_length, struct sockaddr_in address,
+                  uint8_t prot) {
     glob::last_socket_fd = socket_fd;
     glob::last_message = message;
     glob::last_message_length = message_length;
     glob::last_address = address;
     glob::last_prot = prot;
     socklen_t address_length = (socklen_t) sizeof(address);
-    fflush(stdout);
     if (prot == PROT_TCP) {
         ssize_t sent_length = writen(socket_fd, message, message_length);
         if (sent_length < 0)
@@ -86,7 +86,8 @@ void send_message(int socket_fd, char *message, ssize_t message_length, struct s
 }
 
 void resend_last_message() {
-    send_message(glob::last_socket_fd, glob::last_message, glob::last_message_length, glob::last_address, glob::last_prot);
+    send_message(glob::last_socket_fd, glob::last_message, glob::last_message_length,
+                 glob::last_address, glob::last_prot);
 }
 
 

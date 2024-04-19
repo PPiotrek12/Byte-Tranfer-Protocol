@@ -14,6 +14,7 @@ Watpliwosci:
 
 Czy tak to powinno dziala:
 - w UDP czasem serwer nie czyta wszystkiego (tzn jakis pakiet mu wylatuje, nie odbiera go), choc w wiresharku jest ten pakiet
+- (tcp packet loss: 40%): ERROR: readn (104; Connection reset by peer) podczas czytania RCVD w kliencie - serwer TCP juz sobie poszedl, a moze ten pakiet sie po prostu zgubil...
 
 
 Pomysly na testy:

@@ -315,6 +315,11 @@ void tcp_server(struct sockaddr_in server_address) {
     signal(SIGPIPE, SIG_IGN);
     int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (socket_fd < 0) syserr("socket");
+    struct timeval timeout;
+    timeout.tv_sec = MAX_WAIT;
+    timeout.tv_usec = 0;
+    if (setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, (void *)&timeout, sizeof(timeout)))
+        syserr("setsockopt");
     if (bind(socket_fd, (struct sockaddr *)&server_address, (socklen_t)sizeof(server_address)) < 0)
         syserr("bind");
     if (listen(socket_fd, QUEUE_LENGTH) < 0) syserr("listen");

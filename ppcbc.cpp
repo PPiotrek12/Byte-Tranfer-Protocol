@@ -313,6 +313,7 @@ void send_DATA_tcp(int socket_fd, struct sockaddr_in server_address, uint64_t se
 }
 
 void tcp_client(struct sockaddr_in server_address, char *data, uint64_t seq_len) {
+    signal(SIGPIPE, SIG_IGN);
     int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (socket_fd < 0) {
         syserr("socket");
