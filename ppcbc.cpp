@@ -75,7 +75,7 @@ void receive_CON_ACC_RJT_udp(int socket_fd, struct sockaddr_in server_address, u
                     retransmits--;
                     continue;
                 } else
-                    fatal("could not receive packet - CON_ACC CON_RJT"); // TODO
+                    fatal("could not receive packet CONACC or CONRJT");
             }
             syserr("recvfrom");
         }
@@ -104,7 +104,7 @@ void receive_ACC_RJT_udp(int socket_fd, struct sockaddr_in server_address, uint8
                     retransmits--;
                     continue;
                 } else
-                    fatal("could not receive packet - ACC RJT"); // TODO
+                    fatal("could not receive packet ACC or RJT");
             }
             syserr("recvfrom");
         }
@@ -118,7 +118,7 @@ void receive_ACC_RJT_udp(int socket_fd, struct sockaddr_in server_address, uint8
             if (*type == CONACC) continue;  // Ignore packet.
             fatal("invalid packet type");
         }
-        if (length != ACC_LEN) fatal("invalid packet length - ACC RJT"); // TODO
+        if (length != ACC_LEN) fatal("invalid packet length");
         if (packet_nr != res_packet_nr) {
             if (*type == ACC && res_packet_nr < packet_nr) continue;  // Ignore packet.
             fatal("invalid packet number");
@@ -141,7 +141,7 @@ void receive_RCVD_RJT_udp(int socket_fd, struct sockaddr_in server_address, uint
                     retransmits--;
                     continue;
                 } else
-                    fatal("could not receive packet - RCVD RJT"); // TODO
+                    fatal("could not receive packet RCVD or RJT");
             }
             syserr("recvfrom");
         }
@@ -225,7 +225,7 @@ void receive_CON_ACC_tcp(int socket_fd, uint64_t ses_id) {
             close(socket_fd);
             if (errno == EAGAIN || errno == EWOULDBLOCK) { // Timeout.
                 close(socket_fd);
-                fatal("could not receive packet - CON_ACC"); // TODO
+                fatal("could not receive packet CON_ACC");
             }
             syserr("readn");
         }
@@ -256,7 +256,7 @@ void receive_RCVD_RJT_tcp(int socket_fd, uint64_t ses_id) {
             close(socket_fd);
             if (errno == EAGAIN || errno == EWOULDBLOCK) { // Timeout.
                 close(socket_fd);
-                fatal("could not receive packet - RCVD_RJT"); // TODO
+                fatal("could not receive packet RCVD or RJT");
             }
             syserr("readn");
         }
@@ -279,7 +279,7 @@ void receive_RCVD_RJT_tcp(int socket_fd, uint64_t ses_id) {
             if (length2 < 0) {
                 close(socket_fd);
                 if (errno == EAGAIN || errno == EWOULDBLOCK)  // Timeout.
-                    fatal("could not receive packet - RJT"); // TODO
+                    fatal("could not receive packet RJT");
                 syserr("readn");
             }
             if (length1 + length2 < RJT_LEN) {

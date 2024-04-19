@@ -117,7 +117,7 @@ void receive_CONN_udp(int socket_fd, struct sockaddr_in *client_address, uint64_
         uint8_t res_type = buffer[0];
         uint8_t res_prot = buffer[9];
         if (res_type != CONN) {
-            err("invalid packet type");
+            err("invalid packet type - CONN"); // TODO
             continue;  // Next client.
         }
         if (length != CONN_LEN) {
@@ -154,7 +154,7 @@ int receive_one_DATA_packet_udp(int socket_fd, struct sockaddr_in *res_address, 
                     retransmits--;
                     continue;
                 } else {
-                    err("could not receive packet - DATA"); // TODO
+                    err("could not receive packet DATA");
                     return 1;  // Next client.
                 }
             }
@@ -240,7 +240,7 @@ int receive_CONN_tcp(int client_fd, uint64_t *ses_id, uint8_t *prot, uint64_t *s
     ssize_t length = readn(client_fd, buffer, CONN_LEN);
     if (length < 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {  // Timeout.
-            err("could not receive packet - CONN"); // TODO
+            err("could not receive packet CONN");
             return 1;  // Next client.
         }
         syserr("readn");
@@ -279,7 +279,7 @@ int receive_DATA_tcp(int client_fd, uint64_t ses_id, uint64_t seq_len, char *dat
         ssize_t length1 = readn(client_fd, buffer, MIN_DATA_LEN - 1);  // Reading packet header.
         if (length1 < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {  // Timeout.
-                err("could not receive packet - DATA"); // TODO
+                err("could not receive packet DATA");
                 return 1;  // Next client.
             }
             syserr("readn");
@@ -293,7 +293,7 @@ int receive_DATA_tcp(int client_fd, uint64_t ses_id, uint64_t seq_len, char *dat
         ssize_t length2 = readn(client_fd, buffer, res_bytes_nr);  // Reading data.
         if (length2 < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {  // Timeout.
-                err("could not receive packet - DATA 2"); // TODO
+                err("could not receive packet DATA");
                 return 1;  // Next client.
             }
             syserr("readn");

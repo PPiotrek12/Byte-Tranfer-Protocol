@@ -1,6 +1,4 @@
-TODO: 
-- dokladnie przejrzec ignorowanie wczesnijeszych pakietow - w szczegolnosci nie dziala np. ignorowanie CONACC w kliencie podczas reveice_RCVD_RJT (test: updr, input, packet loss: 30%).
-
+TODO:
 - Sprawdzic wszystkie: TODO, printf, fflush, err, fatal, syserr!!!!!
 
 
@@ -20,3 +18,4 @@ Czy tak to powinno dziala:
 
 Pomysly na testy:
 - na malych plikach
+- Testowanie czy dobrze ignorujemy stare pakiety: zrobic duze opoznienie.
