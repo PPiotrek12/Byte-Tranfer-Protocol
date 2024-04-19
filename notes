@@ -1,17 +1,22 @@
 TODO: 
+- dokladnie przejrzec ignorowanie wczesnijeszych pakietow - w szczegolnosci nie dziala np. ignorowanie CONACC w kliencie podczas reveice_RCVD_RJT (test: updr, input, packet loss: 30%).
+
+- Sprawdzic wszystkie: TODO, printf, fflush, err, fatal, syserr!!!!!
 
 
 Watpliwosci:
-- serwer gdy wysle RJT, to gdy klient bedzie dalej wysylal, to bedziemy ciagle walili bledami
+- serwer gdy wysle RJT, to gdy klient bedzie dalej wysylal, to bedziemy ciagle walili bledami (wyslane)
+- po timeoucie rzucany jest ERROR (wyslane)
+- po rejectcie rzucany jest error w kliencie (wyslane)
+
+- czy serwer TCP powinien czekac z timeoutem na CONN?
+- czy serwer i klient TCP rowniez maja ignorowac poprzednie wiadomosci?
 
 
 
-
-
-Czy tak powinno byc:
+Czy tak to powinno dziala:
 - w UDP czasem serwer nie czyta wszystkiego (tzn jakis pakiet mu wylatuje, nie odbiera go), choc w wiresharku jest ten pakiet
 
 
-
 Pomysly na testy:
-- 
+- na malych plikach

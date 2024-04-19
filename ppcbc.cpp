@@ -11,8 +11,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 #include <endian.h>
-#include <random>
 
+#include <random>
 #include <ctime>
 #include <string>
 #include <vector>
@@ -75,7 +75,7 @@ void receive_CON_ACC_RJT_udp(int socket_fd, struct sockaddr_in server_address, u
                     retransmits--;
                     continue;
                 } else
-                    fatal("could not receive packet");
+                    fatal("could not receive packet - CON_ACC CON_RJT"); // TODO
             }
             syserr("recvfrom");
         }
@@ -83,8 +83,8 @@ void receive_CON_ACC_RJT_udp(int socket_fd, struct sockaddr_in server_address, u
         *type = buffer[0];
         memcpy(&res_ses_id, buffer + 1, 8);
         if (ses_id != res_ses_id) fatal("invalid session id");
-        if (length != CONRJT_LEN) fatal("invalid packet length");
         if (*type != CONACC && *type != CONRJT) fatal("invalid packet type");
+        if (length != CONRJT_LEN) fatal("invalid packet length");
         break;
     }
 }
@@ -99,11 +99,12 @@ void receive_ACC_RJT_udp(int socket_fd, struct sockaddr_in server_address, uint8
         if (length < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {  // Timeout.
                 if (retransmits > 0) {
+                    printf("wysylam ponownie\n"); // TODO
                     resend_last_message();
                     retransmits--;
                     continue;
                 } else
-                    fatal("could not receive packet");
+                    fatal("could not receive packet - ACC RJT"); // TODO
             }
             syserr("recvfrom");
         }
@@ -113,14 +114,14 @@ void receive_ACC_RJT_udp(int socket_fd, struct sockaddr_in server_address, uint8
         memcpy(&res_packet_nr, buffer + 9, 8);
         res_packet_nr = be64toh(res_packet_nr);
         if (ses_id != res_ses_id) fatal("invalid session id");
-        if (length != ACC_LEN) fatal("invalid packet length");
+        if (*type != ACC && *type != RJT) {
+            if (*type == CONACC) continue;  // Ignore packet.
+            fatal("invalid packet type");
+        }
+        if (length != ACC_LEN) fatal("invalid packet length - ACC RJT"); // TODO
         if (packet_nr != res_packet_nr) {
             if (*type == ACC && res_packet_nr < packet_nr) continue;  // Ignore packet.
             fatal("invalid packet number");
-        }
-        if (*type != ACC && *type != RJT) {
-            if (res_ses_id == ses_id && *type == CONACC) continue;  // Ignore packet.
-            fatal("invalid packet type");
         }
         break;
     }
@@ -140,7 +141,7 @@ void receive_RCVD_RJT_udp(int socket_fd, struct sockaddr_in server_address, uint
                     retransmits--;
                     continue;
                 } else
-                    fatal("could not receive packet");
+                    fatal("could not receive packet - RCVD RJT"); // TODO
             }
             syserr("recvfrom");
         }
@@ -224,20 +225,20 @@ void receive_CON_ACC_tcp(int socket_fd, uint64_t ses_id) {
             close(socket_fd);
             if (errno == EAGAIN || errno == EWOULDBLOCK) { // Timeout.
                 close(socket_fd);
-                fatal("could not receive packet");
+                fatal("could not receive packet - CON_ACC"); // TODO
             }
             syserr("readn");
         }
         uint64_t res_ses_id;
         uint8_t type = buffer[0];
         memcpy(&res_ses_id, buffer + 1, 8);
-        if (type != CONACC) {
-            close(socket_fd);
-            fatal("invalid packet type");
-        }
         if (ses_id != res_ses_id) {
             close(socket_fd);
             fatal("invalid session id");
+        }
+        if (type != CONACC) {
+            close(socket_fd);
+            fatal("invalid packet type");
         }
         if (length != CONRJT_LEN) {
             close(socket_fd);
@@ -248,14 +249,14 @@ void receive_CON_ACC_tcp(int socket_fd, uint64_t ses_id) {
 }
 
 void receive_RCVD_RJT_tcp(int socket_fd, uint64_t ses_id) {
-    while (true) {
+    while (true) { // TODO: ta petla jest zupelnie bez sensu, albo faktycznie trzeba dodac ignorowanie pakietow CONACC i ACC i zrobic continue
         static char buffer[RJT_LEN];
         ssize_t length1 = readn(socket_fd, buffer, RCVD_LEN);
         if (length1 < 0) {
             close(socket_fd);
             if (errno == EAGAIN || errno == EWOULDBLOCK) { // Timeout.
                 close(socket_fd);
-                fatal("could not receive packet");
+                fatal("could not receive packet - RCVD_RJT"); // TODO
             }
             syserr("readn");
         }
@@ -278,7 +279,7 @@ void receive_RCVD_RJT_tcp(int socket_fd, uint64_t ses_id) {
             if (length2 < 0) {
                 close(socket_fd);
                 if (errno == EAGAIN || errno == EWOULDBLOCK)  // Timeout.
-                    fatal("could not receive packet");
+                    fatal("could not receive packet - RJT"); // TODO
                 syserr("readn");
             }
             if (length1 + length2 < RJT_LEN) {
@@ -328,7 +329,6 @@ void tcp_client(struct sockaddr_in server_address, char *data, uint64_t seq_len)
     uint64_t ses_id = get_random();
 
     send_CONN(socket_fd, server_address, ses_id, PROT_TCP, seq_len);
-
     receive_CON_ACC_tcp(socket_fd, ses_id);
     send_DATA_tcp(socket_fd, server_address, ses_id, data, seq_len);
     receive_RCVD_RJT_tcp(socket_fd, ses_id);
@@ -373,4 +373,5 @@ int main(int argc, char *argv[]) {
     else
         tcp_client(server_address, input, seq_len);
     free(input);
+    return 0;
 }

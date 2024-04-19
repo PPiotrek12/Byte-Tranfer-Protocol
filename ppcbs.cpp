@@ -154,7 +154,7 @@ int receive_one_DATA_packet_udp(int socket_fd, struct sockaddr_in *res_address, 
                     retransmits--;
                     continue;
                 } else {
-                    err("could not receive packet");
+                    err("could not receive packet - DATA"); // TODO
                     return 1;  // Next client.
                 }
             }
@@ -211,6 +211,7 @@ void udp_server(struct sockaddr_in server_address) {
         syserr("bind");
 
     while (true) {
+        err("new client\n");
         uint8_t prot;
         uint64_t seq_len, ses_id;
         struct sockaddr_in client_address;
@@ -239,7 +240,7 @@ int receive_CONN_tcp(int client_fd, uint64_t *ses_id, uint8_t *prot, uint64_t *s
     ssize_t length = readn(client_fd, buffer, CONN_LEN);
     if (length < 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK) {  // Timeout.
-            err("could not receive packet");
+            err("could not receive packet - CONN"); // TODO
             return 1;  // Next client.
         }
         syserr("readn");
@@ -278,7 +279,7 @@ int receive_DATA_tcp(int client_fd, uint64_t ses_id, uint64_t seq_len, char *dat
         ssize_t length1 = readn(client_fd, buffer, MIN_DATA_LEN - 1);  // Reading packet header.
         if (length1 < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {  // Timeout.
-                err("could not receive packet");
+                err("could not receive packet - DATA"); // TODO
                 return 1;  // Next client.
             }
             syserr("readn");
@@ -292,7 +293,7 @@ int receive_DATA_tcp(int client_fd, uint64_t ses_id, uint64_t seq_len, char *dat
         ssize_t length2 = readn(client_fd, buffer, res_bytes_nr);  // Reading data.
         if (length2 < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {  // Timeout.
-                err("could not receive packet");
+                err("could not receive packet - DATA 2"); // TODO
                 return 1;  // Next client.
             }
             syserr("readn");
@@ -376,4 +377,5 @@ int main(int argc, char *argv[]) {
         udp_server(server_address);
     else
         tcp_server(server_address);
+    return 0;
 }
