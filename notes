@@ -9,8 +9,8 @@ Watpliwosci:
 - po timeoucie rzucany jest ERROR (wyslane)
 - po rejectcie rzucany jest error w kliencie (wyslane)
 
-- czy serwer TCP powinien czekac z timeoutem na CONN?
-- czy serwer i klient TCP rowniez maja ignorowac poprzednie wiadomosci?
+- Czy serwer TCP powinien czekać na CONN nieograniczoną ilość czasu (wydaje mi się, że tutaj timeout jest jak najbardziej uzasadniony)? 
+- Czy serwer TCP powinien również ignotować CONN wysłane wielokrotnie i DATA z wcześniejszym numerem paczki, a klient TCP ignorować CONACC wysłane wielokrotnie i ACC z wcześniejszym numerem paczki? Czy implementacja nie ignorująca takich pakietów będzie akceptowana?
 
 
 

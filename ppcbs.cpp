@@ -116,12 +116,12 @@ void receive_CONN_udp(int socket_fd, struct sockaddr_in *client_address, uint64_
         }
         uint8_t res_type = buffer[0];
         uint8_t res_prot = buffer[9];
-        if (length != CONN_LEN) {
-            err("invalid packet length");
-            continue;  // Next client.
-        }
         if (res_type != CONN) {
             err("invalid packet type");
+            continue;  // Next client.
+        }
+        if (length != CONN_LEN) {
+            err("invalid packet length");
             continue;  // Next client.
         }
         if (res_prot != PROT_UDP && res_prot != PROT_UDPR) {
@@ -232,7 +232,7 @@ void udp_server(struct sockaddr_in server_address) {
 
 /* ===================================== TCP FUNCTIONS ========================================= */
 
-const int QUEUE_LENGTH = 10;
+const int QUEUE_LENGTH = 10; // TODO
 
 // Returns 1 if there is need to close connection.
 int receive_CONN_tcp(int client_fd, uint64_t *ses_id, uint8_t *prot, uint64_t *seq_len) {
