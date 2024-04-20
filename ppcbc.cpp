@@ -223,10 +223,8 @@ void receive_CON_ACC_tcp(int socket_fd, uint64_t ses_id) {
         ssize_t length = readn(socket_fd, buffer, CONACC_LEN);
         if (length < 0) {
             close(socket_fd);
-            if (errno == EAGAIN || errno == EWOULDBLOCK) { // Timeout.
-                close(socket_fd);
+            if (errno == EAGAIN || errno == EWOULDBLOCK) // Timeout.
                 fatal("could not receive packet CON_ACC");
-            }
             syserr("readn");
         }
         uint64_t res_ses_id;
@@ -254,10 +252,8 @@ void receive_RCVD_RJT_tcp(int socket_fd, uint64_t ses_id) {
         ssize_t length1 = readn(socket_fd, buffer, RCVD_LEN);
         if (length1 < 0) {
             close(socket_fd);
-            if (errno == EAGAIN || errno == EWOULDBLOCK) { // Timeout.
-                close(socket_fd);
+            if (errno == EAGAIN || errno == EWOULDBLOCK) // Timeout.
                 fatal("could not receive packet RCVD or RJT");
-            }
             syserr("readn");
         }
         uint8_t res_type = buffer[0];
@@ -322,6 +318,11 @@ void tcp_client(struct sockaddr_in server_address, char *data, uint64_t seq_len)
     timeout.tv_sec = MAX_WAIT;
     timeout.tv_usec = 0;
     if (setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, (void *)&timeout, sizeof(timeout)))
+        syserr("setsockopt");
+    struct linger linger_opt;
+    linger_opt.l_onoff = 1;
+    linger_opt.l_linger = 0;
+    if (setsockopt(socket_fd, SOL_SOCKET, SO_LINGER, (void *)&linger_opt, sizeof(linger_opt)))
         syserr("setsockopt");
     if (connect(socket_fd, (struct sockaddr *)&server_address, (socklen_t)sizeof(server_address))<0)
         syserr("cannot connect to the server");

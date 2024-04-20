@@ -319,6 +319,8 @@ void tcp_server(struct sockaddr_in server_address) {
         syserr("bind");
     if (listen(socket_fd, QUEUE_LENGTH) < 0) syserr("listen");
     while (true) {
+        fprintf(stderr, "new client\n");
+        fflush(stderr);
         struct sockaddr_in client_address;
         socklen_t address_length = (socklen_t)sizeof(client_address);
         int client_fd = accept(socket_fd, (struct sockaddr *)&client_address, &address_length);         
@@ -326,6 +328,11 @@ void tcp_server(struct sockaddr_in server_address) {
         struct timeval timeout;
         timeout.tv_sec = MAX_WAIT;
         timeout.tv_usec = 0;
+        struct linger linger_opt;
+        linger_opt.l_onoff = 1;
+        linger_opt.l_linger = 0;
+        if (setsockopt(client_fd, SOL_SOCKET, SO_LINGER, (void *)&linger_opt, sizeof(linger_opt)))
+            syserr("setsockopt");
         if (setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, (void *)&timeout, sizeof(timeout)))
             syserr("setsockopt");
 
@@ -351,7 +358,7 @@ void tcp_server(struct sockaddr_in server_address) {
         send_RCVD(client_fd, client_address, ses_id, PROT_TCP);
         break; // TODO
     }
-    close(socket_fd);
+    //close(socket_fd);
 }
 
 /* ===================================== MAIN FUNCTION ========================================= */
