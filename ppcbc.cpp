@@ -332,7 +332,11 @@ void tcp_client(struct sockaddr_in server_address, char *data, uint64_t seq_len)
     send_CONN(socket_fd, server_address, ses_id, PROT_TCP, seq_len);
     receive_CON_ACC_tcp(socket_fd, ses_id);
     send_DATA_tcp(socket_fd, server_address, ses_id, data, seq_len);
+    printf("probuje czytac RCVD\n");
+    fflush(stdout);
     receive_RCVD_RJT_tcp(socket_fd, ses_id);
+    printf("udalo sie\n");
+    fflush(stdout);
     close(socket_fd);
 }
 

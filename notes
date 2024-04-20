@@ -3,10 +3,6 @@ TODO:
 
 
 Watpliwosci:
-- serwer gdy wysle RJT, to gdy klient bedzie dalej wysylal, to bedziemy ciagle walili bledami (wyslane)
-- po timeoucie rzucany jest ERROR (wyslane)
-- po rejectcie rzucany jest error w kliencie (wyslane)
-
 - Czy serwer TCP powinien czekać na CONN nieograniczoną ilość czasu (wydaje mi się, że tutaj timeout jest jak najbardziej uzasadniony)? 
 - Czy serwer TCP powinien również ignotować CONN wysłane wielokrotnie i DATA z wcześniejszym numerem paczki, a klient TCP ignorować CONACC wysłane wielokrotnie i ACC z wcześniejszym numerem paczki? Czy implementacja nie ignorująca takich pakietów będzie akceptowana?
 

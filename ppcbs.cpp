@@ -88,7 +88,7 @@ int check_received_DATA_packet(int socket_fd, struct sockaddr_in res_address, ui
     }
     if (res_packet_nr != last_packet_nr + 1) {
         if (res_packet_nr < last_packet_nr + 1) return 2;  // Ignore packet.
-        err("invalid packet number");
+        err("invalid packet number: jest: %ld, powinien byc: %ld", res_packet_nr, last_packet_nr + 1);
         send_RJT(socket_fd, res_address, res_ses_id, res_packet_nr, prot);
         return 1;  // Next client.
     }
@@ -232,7 +232,7 @@ void udp_server(struct sockaddr_in server_address) {
 
 /* ===================================== TCP FUNCTIONS ========================================= */
 
-const int QUEUE_LENGTH = 10; // TODO
+const int QUEUE_LENGTH = 1000000; // TODO
 
 // Returns 1 if there is need to close connection.
 int receive_CONN_tcp(int client_fd, uint64_t *ses_id, uint8_t *prot, uint64_t *seq_len) {
@@ -315,18 +315,13 @@ void tcp_server(struct sockaddr_in server_address) {
     signal(SIGPIPE, SIG_IGN);
     int socket_fd = socket(AF_INET, SOCK_STREAM, 0);
     if (socket_fd < 0) syserr("socket");
-    struct timeval timeout;
-    timeout.tv_sec = MAX_WAIT;
-    timeout.tv_usec = 0;
-    if (setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, (void *)&timeout, sizeof(timeout)))
-        syserr("setsockopt");
     if (bind(socket_fd, (struct sockaddr *)&server_address, (socklen_t)sizeof(server_address)) < 0)
         syserr("bind");
     if (listen(socket_fd, QUEUE_LENGTH) < 0) syserr("listen");
     while (true) {
         struct sockaddr_in client_address;
         socklen_t address_length = (socklen_t)sizeof(client_address);
-        int client_fd = accept(socket_fd, (struct sockaddr *)&client_address, &address_length);
+        int client_fd = accept(socket_fd, (struct sockaddr *)&client_address, &address_length);         
         if (client_fd < 0) syserr("accept");
         struct timeval timeout;
         timeout.tv_sec = MAX_WAIT;
@@ -340,6 +335,7 @@ void tcp_server(struct sockaddr_in server_address) {
             close(client_fd);
             continue;
         }
+        //sleep(1);
         send_CONACC(client_fd, client_address, ses_id, PROT_TCP);
 
         char *data = (char *)malloc(seq_len);
@@ -353,7 +349,6 @@ void tcp_server(struct sockaddr_in server_address) {
         free(data);
 
         send_RCVD(client_fd, client_address, ses_id, PROT_TCP);
-        close(client_fd);
         break; // TODO
     }
     close(socket_fd);
