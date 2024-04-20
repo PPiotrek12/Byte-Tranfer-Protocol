@@ -319,11 +319,13 @@ void tcp_client(struct sockaddr_in server_address, char *data, uint64_t seq_len)
     timeout.tv_usec = 0;
     if (setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, (void *)&timeout, sizeof(timeout)))
         syserr("setsockopt");
+
     struct linger linger_opt;
     linger_opt.l_onoff = 1;
     linger_opt.l_linger = 0;
     if (setsockopt(socket_fd, SOL_SOCKET, SO_LINGER, (void *)&linger_opt, sizeof(linger_opt)))
         syserr("setsockopt");
+
     if (connect(socket_fd, (struct sockaddr *)&server_address, (socklen_t)sizeof(server_address))<0)
         syserr("cannot connect to the server");
 
@@ -333,11 +335,7 @@ void tcp_client(struct sockaddr_in server_address, char *data, uint64_t seq_len)
     send_CONN(socket_fd, server_address, ses_id, PROT_TCP, seq_len);
     receive_CON_ACC_tcp(socket_fd, ses_id);
     send_DATA_tcp(socket_fd, server_address, ses_id, data, seq_len);
-    printf("probuje czytac RCVD\n");
-    fflush(stdout);
     receive_RCVD_RJT_tcp(socket_fd, ses_id);
-    printf("udalo sie\n");
-    fflush(stdout);
     close(socket_fd);
 }
 

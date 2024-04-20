@@ -328,12 +328,13 @@ void tcp_server(struct sockaddr_in server_address) {
         struct timeval timeout;
         timeout.tv_sec = MAX_WAIT;
         timeout.tv_usec = 0;
+        if (setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, (void *)&timeout, sizeof(timeout)))
+            syserr("setsockopt");
+
         struct linger linger_opt;
         linger_opt.l_onoff = 1;
         linger_opt.l_linger = 0;
         if (setsockopt(client_fd, SOL_SOCKET, SO_LINGER, (void *)&linger_opt, sizeof(linger_opt)))
-            syserr("setsockopt");
-        if (setsockopt(client_fd, SOL_SOCKET, SO_RCVTIMEO, (void *)&timeout, sizeof(timeout)))
             syserr("setsockopt");
 
         uint8_t prot;
@@ -342,7 +343,6 @@ void tcp_server(struct sockaddr_in server_address) {
             close(client_fd);
             continue;
         }
-        //sleep(1);
         send_CONACC(client_fd, client_address, ses_id, PROT_TCP);
 
         char *data = (char *)malloc(seq_len);
@@ -356,9 +356,8 @@ void tcp_server(struct sockaddr_in server_address) {
         free(data);
 
         send_RCVD(client_fd, client_address, ses_id, PROT_TCP);
-        break; // TODO
     }
-    //close(socket_fd);
+    close(socket_fd);
 }
 
 /* ===================================== MAIN FUNCTION ========================================= */
