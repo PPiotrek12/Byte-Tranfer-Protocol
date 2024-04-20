@@ -23,7 +23,7 @@
 
 using namespace std;
 
-const uint64_t DATA_PACKET_SIZE = 64000;  // TODO
+uint64_t DATA_PACKET_SIZE = 64000;  // TODO
 
 /* ==================================== COMMON FUNCTIONS ======================================= */
 
@@ -342,7 +342,7 @@ void tcp_client(struct sockaddr_in server_address, char *data, uint64_t seq_len)
 /* ===================================== MAIN FUNCTION ========================================= */
 
 int main(int argc, char *argv[]) {
-    if (argc != 4)
+    if (argc != 5) // TODO
         fatal("usage: %s <protocol> <host> <port>", argv[0]);
     string protocol = argv[1];
     const char *host = argv[2];
@@ -356,6 +356,9 @@ int main(int argc, char *argv[]) {
         prot = PROT_UDPR;
     else
         fatal("Invalid protocol");
+    
+    int packet_size = atoi(argv[4]);
+    DATA_PACKET_SIZE = packet_size; // TODO
 
     // Reading from input.
     vector<char> vec_input;

@@ -1,2 +1,2 @@
-const int MAX_WAIT = 1000;
-const int MAX_RETRANSMITS = 10;
+const int MAX_WAIT = 10000;
+const int MAX_RETRANSMITS = 1000;

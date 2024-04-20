@@ -221,8 +221,8 @@ void udp_server(struct sockaddr_in server_address) {
         char *data = (char *)malloc(seq_len);
         if (data == NULL) syserr("malloc");
         if (receive_DATA_udp(socket_fd, ses_id, prot, seq_len, data)) continue;  // Next client.
-        printf("%s", data);
-        fflush(stdout);
+        // printf("%s", data);
+        // fflush(stdout);
         free(data);
 
         send_RCVD(socket_fd, client_address, ses_id, prot);
@@ -351,8 +351,8 @@ void tcp_server(struct sockaddr_in server_address) {
             close(client_fd);
             continue;
         }
-        printf("%s", data);
-        fflush(stdout);
+        // printf("%s", data);
+        // fflush(stdout);
         free(data);
 
         send_RCVD(client_fd, client_address, ses_id, PROT_TCP);
