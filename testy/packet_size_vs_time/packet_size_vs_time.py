@@ -3,8 +3,8 @@ import time
 import pandas as pd
 import numpy as np
 
-START = 1000
-END = 64000
+START = 100
+END = 1000
 STEP = 100
 REPS = 1
 
@@ -23,25 +23,25 @@ for size in np.arange(START, END, STEP):
     times_list = []
     packets_list = []
     for i in range(REPS):
-        begin = time.time()
-        
         with open('/sys/class/net/eth1/statistics/tx_packets', 'r') as f:
             tx_packets_beg = int(f.read())
         with open('/sys/class/net/eth1/statistics/rx_packets', 'r') as f:
             rx_packets_beg = int(f.read())
 
+        begin = time.time()
 
         #os.system(f"sudo tc qdisc change dev eth1 root netem loss {loss}%")
         #os.system(f"sudo tc qdisc change dev eth1 root netem delay 10ms")
-        os.system(f"../.././ppcbc tcp 192.168.42.10 10001 {size} < ../../input100MB")
+        os.system(f"../.././ppcbc udpr 192.168.42.10 10001 {size} < ../../input100MB")
 
+        end = time.time()
 
         with open('/sys/class/net/eth1/statistics/tx_packets', 'r') as f:
             tx_packets_end = int(f.read())
         with open('/sys/class/net/eth1/statistics/rx_packets', 'r') as f:
             rx_packets_end = int(f.read())
 
-        end = time.time()
+        
         times_list.append(end - begin)
         packets_list.append(tx_packets_end - tx_packets_beg + rx_packets_end - rx_packets_beg)
 
