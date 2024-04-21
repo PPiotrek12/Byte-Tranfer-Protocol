@@ -127,7 +127,7 @@ void receive_ACC_RJT_udp(int socket_fd, struct sockaddr_in server_address, uint8
 }
 
 void receive_RCVD_RJT_udp(int socket_fd, struct sockaddr_in server_address, uint64_t ses_id,
-                          int retransmits) {
+                          int retransmits, uint8_t prot) {
     while (true) {
         static char buffer[RJT_LEN];
         socklen_t address_length = (socklen_t)sizeof(server_address);
@@ -157,7 +157,7 @@ void receive_RCVD_RJT_udp(int socket_fd, struct sockaddr_in server_address, uint
             memcpy(&res_packet_nr, buffer + 9, 8);
             res_packet_nr = be64toh(res_packet_nr);
             fatal("packet number %ld was rejected", res_packet_nr);
-        } else if (res_type == CONACC || res_type == ACC)
+        } else if (prot == PROT_UDPR && (res_type == CONACC || res_type == ACC))
             continue;  // Ingore packet.
         else
             fatal("invalid packet type");
@@ -196,7 +196,6 @@ void udp_client(struct sockaddr_in server_address, char *data, uint64_t seq_len,
     if (setsockopt(socket_fd, SOL_SOCKET, SO_RCVTIMEO, (void *)&timeout, sizeof(timeout)))
         syserr("setsockopt");
 
-    srand(time(NULL));
     uint64_t ses_id = get_random();
 
     send_CONN(socket_fd, server_address, ses_id, prot, seq_len);
@@ -210,7 +209,7 @@ void udp_client(struct sockaddr_in server_address, char *data, uint64_t seq_len,
 
     send_DATA_udp(socket_fd, server_address, ses_id, data, retransmit, prot, seq_len);
 
-    receive_RCVD_RJT_udp(socket_fd, server_address, ses_id, retransmit);
+    receive_RCVD_RJT_udp(socket_fd, server_address, ses_id, retransmit, prot);
     close(socket_fd);
 }
 
@@ -325,7 +324,6 @@ void tcp_client(struct sockaddr_in server_address, char *data, uint64_t seq_len)
     if (connect(socket_fd, (struct sockaddr *)&server_address, (socklen_t)sizeof(server_address))<0)
         syserr("cannot connect to the server");
 
-    srand(time(NULL));
     uint64_t ses_id = get_random();
 
     send_CONN(socket_fd, server_address, ses_id, PROT_TCP, seq_len);

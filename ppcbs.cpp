@@ -70,8 +70,9 @@ int check_received_DATA_packet(int socket_fd, struct sockaddr_in res_address, ui
                                uint64_t last_packet_nr, uint8_t res_type, uint64_t res_ses_id,
                                uint64_t res_packet_nr, uint32_t res_bytes_nr, uint8_t prot) {
     if (res_type == CONN) {                  // Someone is trying to interrupt.
-        if (res_ses_id == ses_id) return 2;  // Ignoring CONN sent twice.
+        if (prot == PROT_UDPR && res_ses_id == ses_id) return 2;  // Ignoring CONN sent twice.
         send_CONRJT(socket_fd, res_address, res_ses_id, prot);
+        return 2;
     }
     if (res_ses_id != ses_id) {  // Client authorisation.
         err("invalid session id");
@@ -87,8 +88,8 @@ int check_received_DATA_packet(int socket_fd, struct sockaddr_in res_address, ui
         return 1;  // Next client.
     }
     if (res_packet_nr != last_packet_nr + 1) {
-        if (res_packet_nr < last_packet_nr + 1) return 2;  // Ignore packet.
-        err("invalid packet number: jest: %ld, powinien byc: %ld", res_packet_nr, last_packet_nr + 1);
+        if (prot == PROT_UDPR && res_packet_nr < last_packet_nr + 1) return 2;  // Ignore packet.
+        err("invalid packet number");
         send_RJT(socket_fd, res_address, res_ses_id, res_packet_nr, prot);
         return 1;  // Next client.
     }
@@ -223,8 +224,8 @@ void udp_server(struct sockaddr_in server_address) {
             free(data);
             continue;  // Next client.
         }
-        // printf("%s", data);
-        // fflush(stdout);
+        printf("%s", data);
+        fflush(stdout);
         free(data);
 
         send_RCVD(socket_fd, client_address, ses_id, prot);
@@ -352,12 +353,11 @@ void tcp_server(struct sockaddr_in server_address) {
             free(data);
             continue;
         }
-        // printf("%s", data);
-        // fflush(stdout);
+        printf("%s", data);
+        fflush(stdout);
         free(data);
 
         send_RCVD(client_fd, client_address, ses_id, PROT_TCP);
-        close(client_fd); // TODO: przetestowac
     }
     close(socket_fd);
 }

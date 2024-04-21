@@ -36,12 +36,9 @@ for size in np.arange(START, END, STEP):
         #os.system(f"sudo tc qdisc change dev eth1 root netem loss {loss}%")
         #os.system(f"sudo tc qdisc change dev eth1 root netem delay 10ms")
         
-        os.system(f"../.././ppcbc tcp 192.168.42.10 10001 1000 < inp")
+        os.system(f"../.././ppcbc tcp 192.168.42.10 10001 < inp")
 
         end = time.time()
-
-        if end - begin > 1:
-            continue
 
         with open('/sys/class/net/eth1/statistics/tx_packets', 'r') as f:
             tx_packets_end = int(f.read())
