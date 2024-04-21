@@ -220,7 +220,10 @@ void udp_server(struct sockaddr_in server_address) {
 
         char *data = (char *)malloc(seq_len);
         if (data == NULL) syserr("malloc");
-        if (receive_DATA_udp(socket_fd, ses_id, prot, seq_len, data)) continue;  // Next client.
+        if (receive_DATA_udp(socket_fd, ses_id, prot, seq_len, data)) {
+            free(data);
+            continue;  // Next client.
+        }
         // printf("%s", data);
         // fflush(stdout);
         free(data);
@@ -349,6 +352,7 @@ void tcp_server(struct sockaddr_in server_address) {
         if (data == NULL) syserr("malloc");
         if (receive_DATA_tcp(client_fd, ses_id, seq_len, data)) {
             close(client_fd);
+            free(data);
             continue;
         }
         // printf("%s", data);
@@ -356,6 +360,7 @@ void tcp_server(struct sockaddr_in server_address) {
         free(data);
 
         send_RCVD(client_fd, client_address, ses_id, PROT_TCP);
+        close(client_fd); // TODO: przetestowac
     }
     close(socket_fd);
 }

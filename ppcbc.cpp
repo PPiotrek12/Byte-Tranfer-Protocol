@@ -99,7 +99,6 @@ void receive_ACC_RJT_udp(int socket_fd, struct sockaddr_in server_address, uint8
         if (length < 0) {
             if (errno == EAGAIN || errno == EWOULDBLOCK) {  // Timeout.
                 if (retransmits > 0) {
-                    printf("wysylam ponownie\n"); // TODO
                     resend_last_message();
                     retransmits--;
                     continue;
