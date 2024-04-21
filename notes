@@ -3,17 +3,11 @@ TODO:
 
 
 Watpliwosci:
-- Czy serwer TCP powinien czekać na CONN nieograniczoną ilość czasu (wydaje mi się, że tutaj timeout jest jak najbardziej uzasadniony)? 
-- Czy serwer TCP powinien również ignotować CONN wysłane wielokrotnie i DATA z wcześniejszym numerem paczki, a klient TCP ignorować CONACC wysłane wielokrotnie i ACC z wcześniejszym numerem paczki? Czy implementacja nie ignorująca takich pakietów będzie akceptowana?
 
-- czy w swerwerze na pewno nie powinno byc close()?
+
 
 
 Czy tak to powinno dziala:
-- w UDP czasem serwer nie czyta wszystkiego (tzn jakis pakiet mu wylatuje, nie odbiera go), choc w wiresharku jest ten pakiet
-- (tcp packet loss: 40%): ERROR: readn (104; Connection reset by peer) podczas czytania RCVD w kliencie - serwer TCP juz sobie poszedl, a moze ten pakiet sie po prostu zgubil...
-
-- W TCP, gdy nie dojdzie jakiś pakiet do serwera to po wysłaniu RJT u klienta powinno pojawić się: "ERROR: writen (32; Broken pipe)" zamiast informacji o odrzuceniu pakietu, czy tak?
 
 
 
