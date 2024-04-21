@@ -20,7 +20,7 @@ using namespace std;
 
 namespace glob {
     int last_socket_fd;
-    char *last_message;
+    char last_message[65000];
     ssize_t last_message_length;
     struct sockaddr_in last_address;
     uint8_t last_prot;
@@ -65,7 +65,7 @@ ssize_t writen(int fd, char *vptr, size_t n){
 void send_message(int socket_fd, char *message, ssize_t message_length, struct sockaddr_in address,
                   uint8_t prot) {
     glob::last_socket_fd = socket_fd;
-    glob::last_message = message;
+    memcpy(glob::last_message, message, message_length);
     glob::last_message_length = message_length;
     glob::last_address = address;
     glob::last_prot = prot;
