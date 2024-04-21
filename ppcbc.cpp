@@ -23,7 +23,7 @@
 
 using namespace std;
 
-uint64_t DATA_PACKET_SIZE = 64000;  // TODO
+const uint64_t DATA_PACKET_SIZE = 64000;
 
 /* ==================================== COMMON FUNCTIONS ======================================= */
 
@@ -246,51 +246,48 @@ void receive_CON_ACC_tcp(int socket_fd, uint64_t ses_id) {
 }
 
 void receive_RCVD_RJT_tcp(int socket_fd, uint64_t ses_id) {
-    while (true) { // TODO: ta petla jest zupelnie bez sensu, albo faktycznie trzeba dodac ignorowanie pakietow CONACC i ACC i zrobic continue
-        static char buffer[RJT_LEN];
-        ssize_t length1 = readn(socket_fd, buffer, RCVD_LEN);
-        if (length1 < 0) {
+    static char buffer[RJT_LEN];
+    ssize_t length1 = readn(socket_fd, buffer, RCVD_LEN);
+    if (length1 < 0) {
+        close(socket_fd);
+        if (errno == EAGAIN || errno == EWOULDBLOCK) // Timeout.
+            fatal("could not receive packet RCVD or RJT");
+        syserr("readn");
+    }
+    uint8_t res_type = buffer[0];
+
+    uint64_t res_ses_id;
+    memcpy(&res_ses_id, buffer + 1, 8);
+    if (ses_id != res_ses_id) {
+        close(socket_fd);
+        fatal("invalid session id");
+    }
+    if (res_type == RCVD) {
+        if (length1 != RCVD_LEN) {
             close(socket_fd);
-            if (errno == EAGAIN || errno == EWOULDBLOCK) // Timeout.
-                fatal("could not receive packet RCVD or RJT");
+            fatal("invalid packet length");
+        }
+        return;
+    } else if (res_type == RJT) {
+        ssize_t length2 = readn(socket_fd, buffer, RJT_LEN - RCVD_LEN);
+        if (length2 < 0) {
+            close(socket_fd);
+            if (errno == EAGAIN || errno == EWOULDBLOCK)  // Timeout.
+                fatal("could not receive packet RJT");
             syserr("readn");
         }
-        uint8_t res_type = buffer[0];
-
-        uint64_t res_ses_id;
-        memcpy(&res_ses_id, buffer + 1, 8);
-        if (ses_id != res_ses_id) {
+        if (length1 + length2 < RJT_LEN) {
             close(socket_fd);
-            fatal("invalid session id");
+            fatal("invalid packet length");
         }
-        if (res_type == RCVD) {
-            if (length1 != RCVD_LEN) {
-                close(socket_fd);
-                fatal("invalid packet length");
-            }
-            return;
-        } else if (res_type == RJT) {
-            ssize_t length2 = readn(socket_fd, buffer, RJT_LEN - RCVD_LEN);
-            if (length2 < 0) {
-                close(socket_fd);
-                if (errno == EAGAIN || errno == EWOULDBLOCK)  // Timeout.
-                    fatal("could not receive packet RJT");
-                syserr("readn");
-            }
-            if (length1 + length2 < RJT_LEN) {
-                close(socket_fd);
-                fatal("invalid packet length");
-            }
-            uint64_t res_packet_nr;
-            memcpy(&res_packet_nr, buffer, 8);
-            res_packet_nr = be64toh(res_packet_nr);
-            close(socket_fd);
-            fatal("packet number %ld was rejected", res_packet_nr);
-        } else {
-            close(socket_fd);
-            fatal("invalid packet type");
-        }
-        break;
+        uint64_t res_packet_nr;
+        memcpy(&res_packet_nr, buffer, 8);
+        res_packet_nr = be64toh(res_packet_nr);
+        close(socket_fd);
+        fatal("packet number %ld was rejected", res_packet_nr);
+    } else {
+        close(socket_fd);
+        fatal("invalid packet type");
     }
 }
 
@@ -341,7 +338,7 @@ void tcp_client(struct sockaddr_in server_address, char *data, uint64_t seq_len)
 /* ===================================== MAIN FUNCTION ========================================= */
 
 int main(int argc, char *argv[]) {
-    if (argc != 5) // TODO
+    if (argc != 4)
         fatal("usage: %s <protocol> <host> <port>", argv[0]);
     string protocol = argv[1];
     const char *host = argv[2];
@@ -355,9 +352,6 @@ int main(int argc, char *argv[]) {
         prot = PROT_UDPR;
     else
         fatal("Invalid protocol");
-    
-    int packet_size = atoi(argv[4]);
-    DATA_PACKET_SIZE = packet_size; // TODO
 
     // Reading from input.
     vector<char> vec_input;

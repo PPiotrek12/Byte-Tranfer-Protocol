@@ -4,9 +4,9 @@ import pandas as pd
 import numpy as np
 import math
 
-START = 100000
-END = 1000000
-STEP = 1000
+START = 1000000
+END = 1000000000
+STEP = 10000000
 REPS = 1
 
 counter = 0
@@ -36,7 +36,7 @@ for size in np.arange(START, END, STEP):
         #os.system(f"sudo tc qdisc change dev eth1 root netem loss {loss}%")
         #os.system(f"sudo tc qdisc change dev eth1 root netem delay 10ms")
         
-        os.system(f"../.././ppcbc udp 192.168.42.10 10001 1000 < inp")
+        os.system(f"../.././ppcbc tcp 192.168.42.10 10001 1000 < inp")
 
         end = time.time()
 

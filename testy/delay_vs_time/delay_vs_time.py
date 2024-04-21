@@ -33,7 +33,7 @@ for delay in np.arange(START, END, STEP):
 
         begin = time.time()
         
-        os.system(f"../.././ppcbc udpr 192.168.42.10 10002 64000 < ../../input10MB")
+        os.system(f"../.././ppcbc tcp 192.168.42.10 10002 64000 < ../../input10MB")
 
         end = time.time()
 
