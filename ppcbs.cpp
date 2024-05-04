@@ -224,7 +224,11 @@ void udp_server(struct sockaddr_in server_address) {
             free(data);
             continue;  // Next client.
         }
-        printf("%s", data);
+        while (seq_len > 0) {
+            ssize_t written = write(STDOUT_FILENO, data, seq_len);
+            if (written < 0) syserr("write");
+            seq_len -= written;
+        }
         fflush(stdout);
         free(data);
 
@@ -353,10 +357,12 @@ void tcp_server(struct sockaddr_in server_address) {
             free(data);
             continue;
         }
-        printf("%s", data);
+        while (seq_len > 0) {
+            ssize_t written = write(STDOUT_FILENO, data, seq_len);
+            if (written < 0) syserr("write");
+            seq_len -= written;
+        }
         fflush(stdout);
-        free(data);
-
         send_RCVD(client_fd, client_address, ses_id, PROT_TCP);
     }
     close(socket_fd);

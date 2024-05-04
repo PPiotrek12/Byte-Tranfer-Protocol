@@ -5,6 +5,15 @@
         "bitset": "cpp",
         "ostream": "cpp",
         "iostream": "cpp",
-        "cstdio": "cpp"
+        "cstdio": "cpp",
+        "*.tcc": "cpp",
+        "fstream": "cpp",
+        "iosfwd": "cpp",
+        "istream": "cpp",
+        "limits": "cpp",
+        "shared_mutex": "cpp",
+        "sstream": "cpp",
+        "stop_token": "cpp",
+        "streambuf": "cpp"
     }
 }

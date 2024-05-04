@@ -352,18 +352,20 @@ int main(int argc, char *argv[]) {
         fatal("Invalid protocol");
 
     // Reading from input.
-    vector<char> vec_input;
-    char act;
-    do {
-        act = getc(stdin);
-        vec_input.push_back(act);
-    } while (act != EOF);
-    vec_input.pop_back();
-    u_int64_t seq_len = vec_input.size();
-    char *input = (char *)malloc(seq_len);
-    if (input == NULL) syserr("malloc");
-
-    for (uint64_t i = 0; i < seq_len; i++) input[i] = vec_input[i];
+    uint64_t seq_len = 0, read_len = 0, input_size = DATA_PACKET_SIZE;
+    char *buffer = (char *)malloc(DATA_PACKET_SIZE);
+    char *input = (char *)malloc(DATA_PACKET_SIZE);
+    if (buffer == NULL || input == NULL) syserr("malloc");
+    while ((read_len = read(STDIN_FILENO, buffer, sizeof(buffer))) != 0) {
+        if (seq_len + read_len > input_size) {
+            input_size *= 2;
+            input = (char *)realloc(input, input_size);
+            if (input == NULL) syserr("realloc");
+        }
+        memcpy(input + seq_len, buffer, read_len);
+        seq_len += read_len;
+    }
+    free(buffer);
 
     struct sockaddr_in server_address = get_server_address(host, port);
     if (prot == PROT_UDP || prot == PROT_UDPR)
